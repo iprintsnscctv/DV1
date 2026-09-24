@@ -62,3 +62,21 @@ docker run -d \
 * **Health Check**: Configured at `/api/health` returning `200 OK` and uptime metadata.
 * **Persistent Storage**: All rooms, reservations, custom rate matrix overrides, and housekeeping statuses are automatically persisted to `/app/data/data.json` inside the container and backed up to the host volume.
 * **Non-Root Security**: The container drops privileges and executes as the `node` user (UID 1000).
+
+---
+
+## 5. Supabase PostgreSQL Integration (Optional Cloud Database)
+
+To connect the application to your Supabase PostgreSQL project:
+1. Copy your Project URL and Anon or Service Role key from the Supabase Dashboard.
+2. In your Docker Compose / Stack environment variables:
+   ```yaml
+   environment:
+     - SUPABASE_URL=https://your-project.supabase.co
+     - SUPABASE_ANON_KEY=your-supabase-anon-key
+     - SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+   ```
+3. Open the application, go to **Front Desk Admin** &rarr; click **Supabase Settings** &rarr; **SQL Table Schema** &rarr; click **Copy SQL Schema**.
+4. Paste and run the SQL script in your Supabase **SQL Editor**.
+5. Click **Push Local Rooms & Bookings to Supabase** to seed your cloud database with 1 click!
+

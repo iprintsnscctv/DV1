@@ -3,12 +3,13 @@ import { Room, Reservation, RoomStatus, RoomCustomRates } from '../../types';
 import { 
   Building2, Users, Calendar, DollarSign, CheckCircle2, AlertCircle, 
   Clock, Plus, Search, Filter, Shield, Sparkles, RefreshCw, Eye, Edit3, Trash2, Check, X,
-  Sliders, ListFilter, LayoutGrid, Tag, ArrowUpRight, Upload, Image as ImageIcon
+  Sliders, ListFilter, LayoutGrid, Tag, ArrowUpRight, Upload, Image as ImageIcon, Database
 } from 'lucide-react';
 import { formatPHP } from '../../utils/formatCurrency';
 import { calculateRoomPricing, getRoomCustomRateSummary } from '../../utils/pricingCalculator';
 import { CustomRatesModal } from './CustomRatesModal';
 import { RoomEditModal } from './RoomEditModal';
+import { SupabaseSettingsModal } from './SupabaseSettingsModal';
 
 interface AdminDashboardProps {
   rooms: Room[];
@@ -45,6 +46,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Room add / edit modal state
   const [roomForEdit, setRoomForEdit] = useState<Room | null>(null);
   const [showRoomEditModal, setShowRoomEditModal] = useState(false);
+  const [showSupabaseModal, setShowSupabaseModal] = useState(false);
 
   // Walk-in form state
   const [walkInRoomId, setWalkInRoomId] = useState(rooms[0]?.id || '');
@@ -220,6 +222,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSupabaseModal(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 text-xs font-bold hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 shadow-xs transition-all cursor-pointer"
+            title="Configure Cloud PostgreSQL Database with Supabase"
+          >
+            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Supabase Settings</span>
+          </button>
+
           <button
             onClick={() => {
               setRoomForEdit(null);
@@ -1094,6 +1105,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Supabase PostgreSQL Configuration & Sync Modal */}
+      <SupabaseSettingsModal
+        isOpen={showSupabaseModal}
+        onClose={() => setShowSupabaseModal(false)}
+        onShowToast={onShowToast}
+      />
     </div>
   );
 };
