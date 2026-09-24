@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Warm Espresso & Walnut Neutral Palette (Brown Theme) */
+  --color-slate-50: #faf7f2;
+  --color-slate-100: #f4ede3;
+  --color-slate-200: #e7dbc9;
+  --color-slate-300: #d4c3ad;
+  --color-slate-400: #a7947d;
+  --color-slate-500: #826e58;
+  --color-slate-600: #64523f;
+  --color-slate-700: #4c3d2e;
+  --color-slate-800: #34281e;
+  --color-slate-900: #221912;
+  --color-slate-950: #140f0c;
+
+  /* Lustrous Elegant Gold & Bronze Palette */
+  --color-rose-50: #fcf9ee;
+  --color-rose-100: #f8f1d8;
+  --color-rose-200: #eedfad;
+  --color-rose-300: #e3cb7a;
+  --color-rose-400: #d4b248;
+  --color-rose-500: #c59a27;
+  --color-rose-600: #aa7e18;
+  --color-rose-700: #8b6211;
+  --color-rose-800: #6f4d11;
+  --color-rose-900: #5a3d12;
+  --color-rose-950: #352206;
+
+  --color-indigo-50: #fcf9ee;
+  --color-indigo-100: #f8f1d8;
+  --color-indigo-200: #eedfad;
+  --color-indigo-300: #e3cb7a;
+  --color-indigo-400: #d4b248;
+  --color-indigo-500: #c59a27;
+  --color-indigo-600: #aa7e18;
+  --color-indigo-700: #8b6211;
+  --color-indigo-800: #6f4d11;
+  --color-indigo-900: #5a3d12;
+  --color-indigo-950: #352206;
+
+  /* Rich Gold Direct Tokens */
+  --color-gold-50: #fcf9ee;
+  --color-gold-100: #f8f1d8;
+  --color-gold-200: #eedfad;
+  --color-gold-300: #e3cb7a;
+  --color-gold-400: #d4b248;
+  --color-gold-500: #c59a27;
+  --color-gold-600: #aa7e18;
+  --color-gold-700: #8b6211;
+  --color-gold-800: #6f4d11;
+  --color-gold-900: #5a3d12;
+
+  /* Rich Brown Direct Tokens */
+  --color-brown-50: #faf7f2;
+  --color-brown-100: #f4ede3;
+  --color-brown-200: #e7dbc9;
+  --color-brown-300: #d4c3ad;
+  --color-brown-400: #a7947d;
+  --color-brown-500: #826e58;
+  --color-brown-600: #64523f;
+  --color-brown-700: #4c3d2e;
+  --color-brown-800: #34281e;
+  --color-brown-900: #221912;
+  --color-brown-950: #140f0c;
+}
+
+:root {
+  color-scheme: light;
+  --bg-primary: #faf7f2;
+  --text-primary: #221912;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg-primary: #140f0c;
+  --text-primary: #fcf9ee;
+}
+
+body {
+  background-color: #faf7f2;
+  color: #221912;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: inherit;
+}
+
+html.dark body {
+  background-color: #140f0c;
+  color: #fcf9ee;
+}
+
+/* Custom scrollbars with warm brown/gold styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4c3ad;
+  border-radius: 9999px;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #4c3d2e;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c59a27;
+}

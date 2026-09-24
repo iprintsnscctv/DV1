@@ -14,8 +14,8 @@ import { GuestDashboard } from './components/GuestView/GuestDashboard';
 import { AdminDashboard } from './components/AdminView/AdminDashboard';
 import { RoomDetailModal } from './components/GuestView/RoomDetailModal';
 import { BookingModal } from './components/GuestView/BookingModal';
-import { AskGeminiModal } from './components/GuestView/AskGeminiModal';
 import { ToastContainer, ToastMessage } from './components/Toast';
+import { DiversionLogo } from './components/DiversionLogo';
 
 export default function App() {
   const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
@@ -91,7 +91,6 @@ export default function App() {
   // Modals
   const [selectedRoomForDetails, setSelectedRoomForDetails] = useState<Room | null>(null);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
-  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
 
   // Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -301,14 +300,24 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Ask Gemini Assistant Button & Modal */}
-      <AskGeminiModal
-        rooms={rooms}
-        isOpen={isGeminiModalOpen}
-        onOpen={() => setIsGeminiModalOpen(true)}
-        onClose={() => setIsGeminiModalOpen(false)}
-        onSelectRoom={(room) => setSelectedRoomForDetails(room)}
-      />
+      {/* Refined Brand Footer */}
+      <footer className="border-t border-amber-900/10 dark:border-amber-900/30 bg-[#f7f2ea]/70 dark:bg-[#120d0a]/80 mt-16 py-12 px-4 transition-colors">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <DiversionLogo size="lg" variant="horizontal" />
+          </div>
+
+          <div className="flex flex-col md:items-end text-xs text-[#5c4636] dark:text-[#c4b3a4] space-y-1">
+            <p className="font-semibold text-sm text-[#3b2a1e] dark:text-[#ebdccd]">
+              Diversion Road, Vigan City, Ilocos Sur, Philippines
+            </p>
+            <p>Direct Inquiries & Bookings: +63 977 123 4567 • reservation@diversionvigan.ph</p>
+            <p className="text-[11px] text-[#806c5d] dark:text-[#9e8d7f] pt-1">
+              © {new Date().getFullYear()} Diversion Vigan • Transient and Private Villa. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
 
       {/* Room Detail Modal */}
       {selectedRoomForDetails && (

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Home, Compass, Heart, Calendar, SlidersHorizontal, Sun, Moon, User, UserCheck } from 'lucide-react';
+import { Compass, Heart, Calendar, SlidersHorizontal, Sun, Moon, User, UserCheck } from 'lucide-react';
 import { CustomerUser } from '../types';
+import { DiversionLogo } from './DiversionLogo';
 
 interface HeaderProps {
   currentView: 'guest' | 'admin';
@@ -53,30 +54,14 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left: Brand Logo & Title */}
         <div
-          className="flex items-center gap-3 cursor-pointer select-none"
+          className="cursor-pointer select-none py-1 transition-transform active:scale-[0.98]"
           onClick={() => {
             onViewChange('guest');
             onGuestSubTabChange?.('all');
           }}
+          title="Diversion Vigan Transient and Private Villa"
         >
-          {/* Gold & Bronze Logo Square */}
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white flex items-center justify-center shadow-md shadow-amber-600/25 transition-transform active:scale-95">
-            <Home className="w-5 h-5 fill-white" />
-          </div>
-
-          <div>
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">
-                Diversion Vigan
-              </span>
-              <span className="font-extrabold text-lg sm:text-xl tracking-tight text-amber-600 dark:text-amber-400">
-                Transient
-              </span>
-            </div>
-            <div className="text-[10px] tracking-wider font-bold text-slate-400 dark:text-slate-500 uppercase mt-1">
-              VIGAN CITY, ILOCOS SUR
-            </div>
-          </div>
+          <DiversionLogo size="md" variant="horizontal" />
         </div>
 
         {/* Center: Navigation Pills */}

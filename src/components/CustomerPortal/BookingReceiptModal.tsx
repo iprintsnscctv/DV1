@@ -2,6 +2,7 @@ import React from 'react';
 import { Reservation, Room } from '../../types';
 import { X, Printer, Calendar, Clock, MapPin, User, Phone, Mail, ShieldCheck, CheckCircle2, QrCode } from 'lucide-react';
 import { formatPHP } from '../../utils/formatCurrency';
+import { DiversionLogo } from '../DiversionLogo';
 
 interface BookingReceiptModalProps {
   reservation: Reservation | null;
@@ -58,14 +59,12 @@ export const BookingReceiptModal: React.FC<BookingReceiptModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6 text-slate-900 dark:text-slate-100">
           {/* Header Brand */}
           <div className="flex items-start justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-            <div>
-              <h2 className="text-xl font-extrabold tracking-tight">
-                Diversion Vigan <span className="text-amber-600 dark:text-amber-400">Transient</span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <div className="space-y-1">
+              <DiversionLogo size="sm" variant="horizontal" />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Diversion Road, Vigan City, Ilocos Sur, Philippines
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-400">
                 Contact: +63 977 123 4567 • diversionvigan@example.com
               </p>
             </div>

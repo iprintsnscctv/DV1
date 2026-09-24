@@ -220,8 +220,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                Diversion Transient Booking
+              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">
+                Diversion Vigan • Transient and Private Villa
               </span>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Book {room.name}</h2>
             </div>
