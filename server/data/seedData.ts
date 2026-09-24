@@ -1,0 +1,243 @@
+import { Room, Reservation } from '../types';
+
+export const defaultRooms: Room[] = [
+  {
+    id: 'room-0',
+    name: 'Room 0 - Big Family Room',
+    roomNumber: '0',
+    category: 'Family Suites',
+    capacity: 8,
+    bedsCount: 2,
+    bathsCount: 1,
+    rating: 4.88,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 2000,
+    pricePerHour: 220,
+    status: 'Available',
+    isClean: true,
+    floor: 1,
+    sizeSqM: 45,
+    images: [
+      'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Spacious Big Family Room accommodating up to 8 pax with comfortable bedding and modern amenities.',
+    amenities: ['High-Speed Wi-Fi', 'Smart TV', 'Air Conditioning', 'Hot & Cold Shower', 'Mini Refrigerator'],
+    houseRules: ['No smoking inside room', 'Quiet hours from 10 PM to 7 AM'],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in time.',
+    customRates: {
+      paxTierRates: {
+        monThu: { 1: 2000, 2: 2000, 3: 2000, 4: 2000, 5: 2000, 6: 2400, 7: 2550, 8: 2700 },
+        friSun: { 1: 2200, 2: 2200, 3: 2200, 4: 2200, 5: 2200, 6: 2550, 7: 2750, 8: 3000 }
+      }
+    }
+  },
+  {
+    id: 'room-1',
+    name: 'Room 1 - Big Family Room',
+    roomNumber: '1',
+    category: 'Family Suites',
+    capacity: 8,
+    bedsCount: 2,
+    bathsCount: 1,
+    rating: 4.92,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 2000,
+    pricePerHour: 250,
+    status: 'Available',
+    isClean: true,
+    floor: 1,
+    sizeSqM: 45,
+    images: [
+      'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Spacious Big Family Room accommodating up to 8 pax with comfortable bedding and modern amenities.',
+    amenities: ['High-Speed Wi-Fi', 'Smart TV', 'Air Conditioning', 'Hot & Cold Shower', 'Mini Refrigerator'],
+    houseRules: ['No smoking inside room', 'Quiet hours from 10 PM to 7 AM'],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in time.',
+    customRates: {
+      paxTierRates: {
+        monThu: { 1: 2000, 2: 2000, 3: 2000, 4: 2000, 5: 2000, 6: 2400, 7: 2550, 8: 2700 },
+        friSun: { 1: 2200, 2: 2200, 3: 2200, 4: 2200, 5: 2200, 6: 2550, 7: 2750, 8: 3000 }
+      }
+    }
+  },
+  {
+    id: 'room-2',
+    name: 'Room 2 - Big Family Room',
+    roomNumber: '2',
+    category: 'Family Suites',
+    capacity: 8,
+    bedsCount: 2,
+    bathsCount: 1,
+    rating: 4.85,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 2000,
+    pricePerHour: 250,
+    status: 'Booked',
+    isClean: false,
+    floor: 1,
+    sizeSqM: 45,
+    images: [
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Spacious Big Family Room accommodating up to 8 pax with comfortable bedding and modern amenities.',
+    amenities: ['High-Speed Wi-Fi', 'Smart TV', 'Air Conditioning', 'Hot & Cold Shower', 'Mini Refrigerator'],
+    houseRules: ['No smoking inside room', 'Quiet hours from 10 PM to 7 AM'],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in time.',
+    customRates: {
+      paxTierRates: {
+        monThu: { 1: 2000, 2: 2000, 3: 2000, 4: 2000, 5: 2000, 6: 2400, 7: 2550, 8: 2700 },
+        friSun: { 1: 2200, 2: 2200, 3: 2200, 4: 2200, 5: 2200, 6: 2550, 7: 2750, 8: 3000 }
+      }
+    }
+  },
+  {
+    id: 'room-3',
+    name: 'Room 3 - Deluxe Transient Room',
+    roomNumber: '3',
+    category: 'Deluxe Rooms',
+    capacity: 2,
+    bedsCount: 1,
+    bathsCount: 1,
+    rating: 4.95,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 1200,
+    pricePerHour: 150,
+    status: 'Available',
+    isClean: true,
+    floor: 2,
+    sizeSqM: 25,
+    images: [
+      'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Deluxe Room for couples or solo travelers with queen-size bed and modern ensuite bath.',
+    amenities: ['High-Speed Wi-Fi', 'Smart TV', 'Air Conditioning', 'Hot & Cold Shower', 'Toiletries'],
+    houseRules: ['Strictly no smoking', 'Quiet hours after 10 PM'],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+    customRates: {
+      paxTierRates: {
+        monThu: { 1: 1200, 2: 1200 },
+        friSun: { 1: 1350, 2: 1350 }
+      }
+    }
+  },
+  {
+    id: 'room-4',
+    name: 'Room 4 - Standard Transient Room',
+    roomNumber: '4',
+    category: 'Standard Rooms',
+    capacity: 4,
+    bedsCount: 2,
+    bathsCount: 1,
+    rating: 4.80,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 1400,
+    pricePerHour: 180,
+    status: 'Available',
+    isClean: true,
+    floor: 2,
+    sizeSqM: 30,
+    images: [
+      'https://images.unsplash.com/photo-1563911302283-d2bc129e7570?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Comfortable standard transient room accommodating up to 4 pax, perfect for barkadas or small families.',
+    amenities: ['High-Speed Wi-Fi', 'Air Conditioning', 'Hot Shower', 'Toiletries', 'Luggage Space'],
+    houseRules: ['No smoking inside', 'Quiet hours after 10 PM'],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.'
+  },
+  {
+    id: 'room-5',
+    name: 'Room 5 - Standard Transient Room',
+    roomNumber: '5',
+    category: 'Standard Rooms',
+    capacity: 4,
+    bedsCount: 2,
+    bathsCount: 1,
+    rating: 4.82,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 1400,
+    pricePerHour: 180,
+    status: 'Reserved',
+    isClean: true,
+    floor: 2,
+    sizeSqM: 30,
+    images: [
+      'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Comfortable standard transient room accommodating up to 4 pax with two double beds.',
+    amenities: ['High-Speed Wi-Fi', 'Air Conditioning', 'Hot Shower', 'Toiletries'],
+    houseRules: ['No smoking inside', 'Quiet hours after 10 PM'],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.'
+  },
+  {
+    id: 'room-6',
+    name: 'Room 6 - Budget Transient Room',
+    roomNumber: '6',
+    category: 'Standard Rooms',
+    capacity: 2,
+    bedsCount: 1,
+    bathsCount: 1,
+    rating: 4.75,
+    location: 'Diversion Road, Vigan City',
+    pricePerNight: 950,
+    pricePerHour: 120,
+    status: 'Available',
+    isClean: true,
+    floor: 2,
+    sizeSqM: 20,
+    images: [
+      'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'
+    ],
+    description: 'Budget-friendly transient room for solo travelers or couples visiting historic Vigan.',
+    amenities: ['High-Speed Wi-Fi', 'Air Conditioning', 'Shower', 'Toiletries'],
+    houseRules: ['Strictly no smoking', 'Quiet hours after 10 PM'],
+    cancellationPolicy: 'Free cancellation up to 12 hours before check-in.'
+  }
+];
+
+export const defaultReservations: Reservation[] = [
+  {
+    id: 'res-101',
+    confirmationCode: 'DIV-8921-XQ',
+    roomId: 'room-2',
+    roomName: 'Room 2 - Big Family Room',
+    roomNumber: '2',
+    guestName: 'Alexander Wright',
+    guestEmail: 'alex.wright@example.com',
+    guestPhone: '+63 917 123 4567',
+    checkInDate: '2026-09-24',
+    checkOutDate: '2026-09-26',
+    numberOfGuests: 6,
+    totalAmount: 5100,
+    status: 'upcoming',
+    specialRequests: 'Ground floor room preferred, late arrival around 7 PM.',
+    createdAt: '2026-09-20 14:32',
+    paymentMethod: 'GCash / Online Transfer'
+  },
+  {
+    id: 'res-102',
+    confirmationCode: 'DIV-5412-MK',
+    roomId: 'room-5',
+    roomName: 'Room 5 - Standard Transient Room',
+    roomNumber: '5',
+    guestName: 'Elena Rostova',
+    guestEmail: 'elena.rostova@example.com',
+    guestPhone: '+63 920 987 6543',
+    checkInDate: '2026-09-23',
+    checkOutDate: '2026-09-25',
+    numberOfGuests: 4,
+    totalAmount: 2800,
+    status: 'active',
+    specialRequests: 'Extra blankets and electric kettle requested.',
+    createdAt: '2026-09-18 09:15',
+    paymentMethod: 'Cash on Arrival'
+  }
+];

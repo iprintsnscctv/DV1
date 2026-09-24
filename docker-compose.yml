@@ -1,0 +1,33 @@
+services:
+  diversion-transient:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: diversion-transient-app:latest
+    container_name: diversion-transient-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATA_FILE_PATH=/app/data/data.json
+    volumes:
+      # Persistent named volume preserves all bookings & room statuses across restarts/rebuilds
+      - transient_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  transient_data:
+    name: diversion_transient_data
+    driver: local

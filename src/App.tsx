@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Room, Reservation, FilterState, RoomStatus, CustomerUser } from './types';
 import { INITIAL_ROOMS, INITIAL_RESERVATIONS } from './data/mockData';
+import {
+  fetchRooms,
+  fetchReservations,
+  createReservationOnServer,
+  updateReservationStatusOnServer,
+  updateRoomOnServer,
+} from './services/api';
 import { getCurrentCustomer } from './utils/customerAuth';
 import { Header } from './components/Header';
 import { GuestDashboard } from './components/GuestView/GuestDashboard';
@@ -23,6 +30,25 @@ export default function App() {
   const [checkInDate, setCheckInDate] = useState('2026-09-24');
   const [checkOutDate, setCheckOutDate] = useState('2026-09-26');
   const [guestsCount, setGuestsCount] = useState(1);
+
+  // Sync with backend API on mount
+  useEffect(() => {
+    fetchRooms()
+      .then((serverRooms) => {
+        if (serverRooms && serverRooms.length > 0) {
+          setRooms(serverRooms);
+        }
+      })
+      .catch((err) => console.log('Using local rooms dataset fallback:', err));
+
+    fetchReservations()
+      .then((serverRes) => {
+        if (serverRes && serverRes.length > 0) {
+          setReservations(serverRes);
+        }
+      })
+      .catch((err) => console.log('Using local reservations dataset fallback:', err));
+  }, []);
 
   // Saved / Favorite rooms
   const [savedRoomIds, setSavedRoomIds] = useState<string[]>(() => {
@@ -106,6 +132,9 @@ export default function App() {
     setRooms((prev) =>
       prev.map((r) => (r.id === roomId ? { ...r, status, isClean } : r))
     );
+    updateRoomOnServer(roomId, { status, isClean }).catch((err) =>
+      console.warn('Backend sync failed, state retained locally:', err)
+    );
     showToast('Room status and housekeeping updated successfully.', 'success');
   };
 
@@ -120,6 +149,10 @@ export default function App() {
 
     setReservations((prev) =>
       prev.map((res) => (res.id === reservationId ? { ...res, status } : res))
+    );
+
+    updateReservationStatusOnServer(reservationId, status).catch((err) =>
+      console.warn('Backend reservation status sync failed:', err)
     );
   };
 
@@ -149,6 +182,11 @@ export default function App() {
       prev.map((r) => (r.id === newResData.roomId ? { ...r, status: 'Reserved' } : r))
     );
 
+    // Save to server
+    createReservationOnServer(newReservation).catch((err) =>
+      console.warn('Backend booking save failed, cached in memory:', err)
+    );
+
     // Switch to My Booking so guest can inspect voucher
     setGuestSubTab('my-booking');
     showToast('Booking confirmed! Check your official voucher in My Booking.', 'success');
@@ -167,11 +205,22 @@ export default function App() {
     };
 
     setReservations((prev) => [newReservation, ...prev]);
+    createReservationOnServer(newReservation).catch((err) =>
+      console.warn('Backend walk-in sync failed:', err)
+    );
   };
 
   // Update room details from front desk panel
   const handleUpdateRoom = (updatedRoom: Room) => {
     setRooms((prev) => prev.map((r) => (r.id === updatedRoom.id ? updatedRoom : r)));
+    updateRoomOnServer(updatedRoom.id, {
+      status: updatedRoom.status,
+      isClean: updatedRoom.isClean,
+      pricePerNight: updatedRoom.pricePerNight,
+      pricePerHour: updatedRoom.pricePerHour,
+      description: updatedRoom.description,
+      customRates: updatedRoom.customRates,
+    }).catch((err) => console.warn('Backend room update failed:', err));
   };
 
   // Add new room to inventory
@@ -183,6 +232,9 @@ export default function App() {
   const handleSaveRoomCustomRates = (roomId: string, customRates: Room['customRates']) => {
     setRooms((prev) =>
       prev.map((r) => (r.id === roomId ? { ...r, customRates } : r))
+    );
+    updateRoomOnServer(roomId, { customRates }).catch((err) =>
+      console.warn('Backend custom rates sync failed:', err)
     );
   };
 
