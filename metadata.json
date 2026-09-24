@@ -1,0 +1,8 @@
+{
+  "name": "Remix Diversion Transient Room Booking System (Copy)",
+  "description": "A high-performance guest booking interface and front-desk control panel for transient room management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

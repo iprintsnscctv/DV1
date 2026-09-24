@@ -1,0 +1,292 @@
+import React, { useState } from 'react';
+import { Room, Reservation, FilterState, RoomStatus, CustomerUser } from './types';
+import { INITIAL_ROOMS, INITIAL_RESERVATIONS } from './data/mockData';
+import { getCurrentCustomer } from './utils/customerAuth';
+import { Header } from './components/Header';
+import { GuestDashboard } from './components/GuestView/GuestDashboard';
+import { AdminDashboard } from './components/AdminView/AdminDashboard';
+import { RoomDetailModal } from './components/GuestView/RoomDetailModal';
+import { BookingModal } from './components/GuestView/BookingModal';
+import { AskGeminiModal } from './components/GuestView/AskGeminiModal';
+import { ToastContainer, ToastMessage } from './components/Toast';
+
+export default function App() {
+  const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
+  const [reservations, setReservations] = useState<Reservation[]>(INITIAL_RESERVATIONS);
+  const [currentView, setCurrentView] = useState<'guest' | 'admin'>('guest');
+  const [guestSubTab, setGuestSubTab] = useState<'all' | 'saved' | 'my-booking'>('all');
+
+  // Customer Account Auth State
+  const [currentCustomer, setCurrentCustomer] = useState<CustomerUser | null>(() => getCurrentCustomer());
+
+  // Search Bar Criteria (synced with Booking Modal)
+  const [checkInDate, setCheckInDate] = useState('2026-09-24');
+  const [checkOutDate, setCheckOutDate] = useState('2026-09-26');
+  const [guestsCount, setGuestsCount] = useState(1);
+
+  // Saved / Favorite rooms
+  const [savedRoomIds, setSavedRoomIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('div_saved_rooms');
+      return stored ? JSON.parse(stored) : ['room-0', 'room-3'];
+    } catch {
+      return ['room-0', 'room-3'];
+    }
+  });
+
+  const toggleSaveRoom = (roomId: string) => {
+    const isCurrentlySaved = savedRoomIds.includes(roomId);
+    const updated = isCurrentlySaved
+      ? savedRoomIds.filter((id) => id !== roomId)
+      : [...savedRoomIds, roomId];
+
+    setSavedRoomIds(updated);
+    try {
+      localStorage.setItem('div_saved_rooms', JSON.stringify(updated));
+    } catch {}
+
+    showToast(
+      isCurrentlySaved ? 'Removed from your saved rooms' : 'Saved room to your favorites list!',
+      isCurrentlySaved ? 'info' : 'success'
+    );
+  };
+
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: '',
+    category: 'All',
+    minPrice: 500,
+    maxPrice: 6000,
+    capacity: 1,
+    amenities: [],
+    status: 'All',
+  });
+
+  // Modals
+  const [selectedRoomForDetails, setSelectedRoomForDetails] = useState<Room | null>(null);
+  const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
+  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+
+  // Toasts
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const newToast: ToastMessage = {
+      id: Math.random().toString(36).substring(2, 9),
+      message,
+      type,
+    };
+    setToasts((prev) => [...prev, newToast]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      searchQuery: '',
+      category: 'All',
+      minPrice: 500,
+      maxPrice: 6000,
+      capacity: 1,
+      amenities: [],
+      status: 'All',
+    });
+    setGuestsCount(1);
+    showToast('Filters reset to default.', 'info');
+  };
+
+  // Room status update from admin
+  const handleUpdateRoomStatus = (roomId: string, status: RoomStatus, isClean: boolean) => {
+    setRooms((prev) =>
+      prev.map((r) => (r.id === roomId ? { ...r, status, isClean } : r))
+    );
+    showToast('Room status and housekeeping updated successfully.', 'success');
+  };
+
+  // Reservation status update
+  const handleUpdateReservationStatus = (reservationId: string, status: Reservation['status']) => {
+    const targetRes = reservations.find((r) => r.id === reservationId);
+    if (targetRes && (status === 'completed' || status === 'cancelled')) {
+      setRooms((rPrev) =>
+        rPrev.map((r) => (r.id === targetRes.roomId ? { ...r, status: 'Available' } : r))
+      );
+    }
+
+    setReservations((prev) =>
+      prev.map((res) => (res.id === reservationId ? { ...res, status } : res))
+    );
+  };
+
+  // Create guest transient booking
+  const handleConfirmBooking = (
+    newResData: Omit<Reservation, 'id' | 'confirmationCode' | 'createdAt' | 'status'>
+  ) => {
+    if (!currentCustomer) {
+      showToast('You must register an account before booking a room.', 'error');
+      setGuestSubTab('my-booking');
+      return;
+    }
+
+    const randomCode = `DIV-${Math.floor(1000 + Math.random() * 9000)}-${['XZ', 'MK', 'PR', 'QW'][Math.floor(Math.random() * 4)]}`;
+    const newReservation: Reservation = {
+      ...newResData,
+      id: `res-${Date.now()}`,
+      confirmationCode: randomCode,
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      status: 'upcoming',
+    };
+
+    setReservations((prev) => [newReservation, ...prev]);
+
+    // Mark room as reserved/booked
+    setRooms((prev) =>
+      prev.map((r) => (r.id === newResData.roomId ? { ...r, status: 'Reserved' } : r))
+    );
+
+    // Switch to My Booking so guest can inspect voucher
+    setGuestSubTab('my-booking');
+    showToast('Booking confirmed! Check your official voucher in My Booking.', 'success');
+  };
+
+  // Create walk-in reservation from admin
+  const handleCreateWalkIn = (
+    newResData: Omit<Reservation, 'id' | 'confirmationCode' | 'createdAt'>
+  ) => {
+    const randomCode = `DIV-WALK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newReservation: Reservation = {
+      ...newResData,
+      id: `res-${Date.now()}`,
+      confirmationCode: randomCode,
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+    };
+
+    setReservations((prev) => [newReservation, ...prev]);
+  };
+
+  // Update room details from front desk panel
+  const handleUpdateRoom = (updatedRoom: Room) => {
+    setRooms((prev) => prev.map((r) => (r.id === updatedRoom.id ? updatedRoom : r)));
+  };
+
+  // Add new room to inventory
+  const handleAddNewRoom = (newRoom: Room) => {
+    setRooms((prev) => [newRoom, ...prev]);
+  };
+
+  // Save custom rates for room
+  const handleSaveRoomCustomRates = (roomId: string, customRates: Room['customRates']) => {
+    setRooms((prev) =>
+      prev.map((r) => (r.id === roomId ? { ...r, customRates } : r))
+    );
+  };
+
+  const customerBookingsCount = currentCustomer
+    ? reservations.filter((r) => r.guestEmail.toLowerCase() === currentCustomer.email.toLowerCase()).length
+    : 0;
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+      <Header
+        currentView={currentView}
+        guestSubTab={guestSubTab}
+        currentCustomer={currentCustomer}
+        savedCount={savedRoomIds.length}
+        customerBookingsCount={customerBookingsCount}
+        onViewChange={(view) => {
+          setCurrentView(view);
+          if (view === 'guest') setGuestSubTab('all');
+        }}
+        onGuestSubTabChange={(tab) => {
+          setCurrentView('guest');
+          setGuestSubTab(tab);
+        }}
+        onShowToast={showToast}
+      />
+
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 pt-6">
+        {currentView === 'guest' ? (
+          <GuestDashboard
+            rooms={rooms}
+            filters={filters}
+            savedRoomIds={savedRoomIds}
+            reservations={reservations}
+            guestSubTab={guestSubTab}
+            currentCustomer={currentCustomer}
+            checkInDate={checkInDate}
+            checkOutDate={checkOutDate}
+            guestsCount={guestsCount}
+            onFilterChange={handleFilterChange}
+            onResetFilters={handleResetFilters}
+            onToggleSaveRoom={toggleSaveRoom}
+            onSelectRoom={(room) => setSelectedRoomForDetails(room)}
+            onBookRoom={(room) => setSelectedRoomForBooking(room)}
+            onCheckInChange={setCheckInDate}
+            onCheckOutChange={setCheckOutDate}
+            onGuestsCountChange={setGuestsCount}
+            onSwitchToCatalog={() => setGuestSubTab('all')}
+            onCustomerChange={setCurrentCustomer}
+            onCancelReservation={(id) => handleUpdateReservationStatus(id, 'cancelled')}
+            onShowToast={showToast}
+          />
+        ) : (
+          <AdminDashboard
+            rooms={rooms}
+            reservations={reservations}
+            onUpdateRoomStatus={handleUpdateRoomStatus}
+            onUpdateReservationStatus={handleUpdateReservationStatus}
+            onCreateWalkInReservation={handleCreateWalkIn}
+            onUpdateRoom={handleUpdateRoom}
+            onAddNewRoom={handleAddNewRoom}
+            onSaveRoomCustomRates={handleSaveRoomCustomRates}
+            onShowToast={showToast}
+          />
+        )}
+      </main>
+
+      {/* Floating Ask Gemini Assistant Button & Modal */}
+      <AskGeminiModal
+        rooms={rooms}
+        isOpen={isGeminiModalOpen}
+        onOpen={() => setIsGeminiModalOpen(true)}
+        onClose={() => setIsGeminiModalOpen(false)}
+        onSelectRoom={(room) => setSelectedRoomForDetails(room)}
+      />
+
+      {/* Room Detail Modal */}
+      {selectedRoomForDetails && (
+        <RoomDetailModal
+          room={selectedRoomForDetails}
+          onClose={() => setSelectedRoomForDetails(null)}
+          onBook={(room) => {
+            setSelectedRoomForDetails(null);
+            setSelectedRoomForBooking(room);
+          }}
+        />
+      )}
+
+      {/* Booking Workflow Modal with customer prefill */}
+      {selectedRoomForBooking && (
+        <BookingModal
+          room={selectedRoomForBooking}
+          currentCustomer={currentCustomer}
+          onCustomerChange={setCurrentCustomer}
+          initialCheckInDate={checkInDate}
+          initialCheckOutDate={checkOutDate}
+          initialGuestsCount={guestsCount}
+          onClose={() => setSelectedRoomForBooking(null)}
+          onConfirmBooking={handleConfirmBooking}
+          onShowToast={showToast}
+        />
+      )}
+
+      {/* Toast Notification Container */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </div>
+  );
+}
