@@ -1,20 +1,16 @@
 import 'dotenv/config';
-import path from 'node:path';
-import fs from 'node:fs';
+import path from 'path';
+import express from 'express';
+import { createServer as createViteServer } from 'vite';
+import { createApp } from './server/app';
 
-const isProduction = process.env.NODE_ENV === 'production';
-const bundledServer = path.resolve(process.cwd(), 'dist-server', 'server.js');
+const PORT = Number(process.env.PORT) || 3000;
 
-if (isProduction && fs.existsSync(bundledServer)) {
-  await import(path.resolve(process.cwd(), 'dist-server', 'server.js'));
-} else {
-  const express = (await import('express')).default;
-  const { createApp } = await import('./server/app.ts');
-  const PORT = Number(process.env.PORT) || 3000;
+async function startServer() {
   const app = createApp();
 
-  if (!isProduction) {
-    const { createServer: createViteServer } = await import('vite');
+  // Vite development middleware or production static bundle serving
+  if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -23,16 +19,8 @@ if (isProduction && fs.existsSync(bundledServer)) {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req: any, res: any) => {
-      if (res.headersSent) return;
-      if (req.path.startsWith('/api')) {
-        return res.status(404).json({ error: 'API route not found' });
-      }
-      res.sendFile(path.join(distPath, 'index.html'), (err: any) => {
-        if (err && !res.headersSent) {
-          res.status(500).send('Error loading application');
-        }
-      });
+    app.get('*all', (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
@@ -40,3 +28,5 @@ if (isProduction && fs.existsSync(bundledServer)) {
     console.log(`[Diversion Vigan] Full-stack Server listening on http://0.0.0.0:${PORT}`);
   });
 }
+
+startServer();

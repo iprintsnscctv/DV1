@@ -1,1 +1,1 @@
-export { GET, POST, PUT, PATCH, DELETE } from '../bookings/route.js';
+export { GET, POST, PUT, DELETE } from '../bookings/route.js';

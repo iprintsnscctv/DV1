@@ -361,7 +361,7 @@ export const INITIAL_ROOMS: Room[] = [
     sizeSqM: 24,
     images: [
       'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80'
+      'https://images.unsplash.com/photo-1540518614846-7ede433c4ef0?auto=format&fit=crop&w=1200&q=80'
     ],
     description: 'Comfortable Standard room accommodating up to 3 pax.',
     amenities: ['High-Speed Wi-Fi', 'Panoramic Windows', 'Air Conditioning', 'Smart TV'],

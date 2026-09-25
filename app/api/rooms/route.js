@@ -138,11 +138,6 @@ export async function PUT(request) {
   }
 }
 
-// PATCH /api/rooms
-export async function PATCH(request) {
-  return PUT(request);
-}
-
 // DELETE /api/rooms
 export async function DELETE(request) {
   try {

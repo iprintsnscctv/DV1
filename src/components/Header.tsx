@@ -1,147 +1,193 @@
 import React from 'react';
-import {
-  Building2,
-  CalendarCheck,
-  Search,
-  ShieldCheck,
-  Phone,
-  MapPin,
-  Database,
-  Sparkles,
-} from 'lucide-react';
-import { SupabaseConfigStatus } from '../types';
+import { Compass, Heart, Calendar, SlidersHorizontal, Sun, Moon, User, UserCheck, Phone } from 'lucide-react';
+import { CustomerUser } from '../types';
+import { DiversionLogo } from './DiversionLogo';
 
 interface HeaderProps {
-  activeTab: 'explore' | 'lookup' | 'admin' | 'custom-rates';
-  setActiveTab: (tab: 'explore' | 'lookup' | 'admin' | 'custom-rates') => void;
-  supabaseStatus: SupabaseConfigStatus | null;
-  onOpenLookup: () => void;
+  currentView: 'guest' | 'admin';
+  guestSubTab?: 'all' | 'saved' | 'my-booking' | 'contact';
+  currentCustomer: CustomerUser | null;
+  savedCount?: number;
+  customerBookingsCount?: number;
+  onViewChange: (view: 'guest' | 'admin') => void;
+  onGuestSubTabChange?: (tab: 'all' | 'saved' | 'my-booking' | 'contact') => void;
+  onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeTab,
-  setActiveTab,
-  supabaseStatus,
-  onOpenLookup,
+  currentView,
+  guestSubTab = 'all',
+  currentCustomer,
+  savedCount = 0,
+  customerBookingsCount = 0,
+  onViewChange,
+  onGuestSubTabChange,
+  onShowToast,
 }) => {
+  const [isDark, setIsDark] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark') return true;
+      if (stored === 'light') return false;
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => {
+    setIsDark((prev) => !prev);
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#1a1410]/95 backdrop-blur-md border-b border-[#ebdccd] dark:border-[#382b22] transition-colors shadow-xs">
-      {/* Top Banner */}
-      <div className="bg-[#2a1c14] text-[#fbf8f4] text-xs py-1.5 px-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-4 text-[11px] text-[#e0cfbe]">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-amber-400" />
-              Diversion Road, Vigan City, Ilocos Sur
-            </span>
-            <span className="hidden sm:inline-flex items-center gap-1">
-              <Phone className="w-3.5 h-3.5 text-amber-400" />
-              +63 917 123 4567 / (077) 674-0000
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-[11px]">
-            <a
-              href="https://maps.google.com/?q=Diversion+Road+Vigan+City"
-              target="_blank"
-              rel="noreferrer"
-              className="text-amber-300 hover:text-amber-200 transition-colors"
-            >
-              Get Directions
-            </a>
-            {supabaseStatus && (
-              <span className="flex items-center gap-1.5 text-[10px] bg-amber-900/60 px-2 py-0.5 rounded-full border border-amber-700/50">
-                <Database className="w-2.5 h-2.5 text-amber-300" />
-                {supabaseStatus.isConfigured ? (
-                  <span className="text-emerald-300 font-medium">Supabase Connected</span>
-                ) : (
-                  <span className="text-amber-300">Local DB Active</span>
-                )}
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 px-4 lg:px-8 py-3 shadow-xs transition-colors duration-200">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Left: Brand Logo & Title */}
+        <div
+          className="cursor-pointer select-none py-1 transition-transform active:scale-[0.98]"
+          onClick={() => {
+            onViewChange('guest');
+            onGuestSubTabChange?.('all');
+          }}
+          title="Diversion Vigan Transient and Private Villa"
+        >
+          <DiversionLogo size="md" variant="horizontal" />
+        </div>
+
+        {/* Center: Navigation Pills */}
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 dark:bg-slate-800/60 p-1 rounded-full border border-slate-200/80 dark:border-slate-700/60 flex-wrap justify-center">
+          {/* Explore Room */}
+          <button
+            type="button"
+            onClick={() => {
+              onViewChange('guest');
+              onGuestSubTabChange?.('all');
+            }}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'guest' && guestSubTab === 'all'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-400/80 dark:border-rose-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Explore Room</span>
+          </button>
+
+          {/* Saved */}
+          <button
+            type="button"
+            onClick={() => {
+              onViewChange('guest');
+              onGuestSubTabChange?.('saved');
+            }}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'guest' && guestSubTab === 'saved'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-400/80 dark:border-rose-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${savedCount > 0 ? 'fill-rose-500 text-rose-500' : ''}`} />
+            <span>Saved</span>
+            {savedCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {savedCount}
               </span>
             )}
-          </div>
-        </div>
-      </div>
+          </button>
 
-      {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo & Brand */}
-          <div
-            onClick={() => setActiveTab('explore')}
-            className="flex items-center gap-3 cursor-pointer group"
+          {/* My Booking (Email & Password Required) */}
+          <button
+            type="button"
+            onClick={() => {
+              onViewChange('guest');
+              onGuestSubTabChange?.('my-booking');
+            }}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'guest' && guestSubTab === 'my-booking'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-400/80 dark:border-rose-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60'
+            }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-700 to-[#3e2312] p-0.5 shadow-md flex items-center justify-center text-white font-serif font-bold text-xl tracking-tight">
-              <span>DV</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-lg font-serif font-bold text-[#2a1c14] dark:text-[#f8f4ec] tracking-tight">
-                  Diversion Vigan
-                </h1>
-                <span className="text-[10px] uppercase font-bold tracking-widest bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded">
-                  Villa
-                </span>
-              </div>
-              <p className="text-xs text-[#735745] dark:text-[#bda99a] tracking-wide">
-                Transient and Private Villa • Vigan City
-              </p>
-            </div>
+            {currentCustomer ? (
+              <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+            ) : (
+              <Calendar className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {currentCustomer ? 'My Booking' : 'My Booking'}
+            </span>
+            {currentCustomer && customerBookingsCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold">
+                {customerBookingsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Contact Us */}
+          <button
+            type="button"
+            onClick={() => {
+              onViewChange('guest');
+              onGuestSubTabChange?.('contact');
+            }}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'guest' && guestSubTab === 'contact'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-400/80 dark:border-rose-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60'
+            }`}
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Contact Us</span>
+          </button>
+        </div>
+
+        {/* Right: Admin Control Button & DV Avatar */}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => onViewChange('admin')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-xs transition-all active:scale-95 cursor-pointer ${
+              currentView === 'admin'
+                ? 'bg-slate-300/50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border border-slate-300/70 dark:border-slate-700 shadow-xs'
+                : 'bg-slate-200/40 hover:bg-slate-200/70 dark:bg-slate-800/40 dark:hover:bg-slate-800/70 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 border border-slate-300/40 dark:border-slate-700/40 opacity-75 hover:opacity-100'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 opacity-60" />
+            <span>Admin</span>
+          </button>
+
+          {/* DV Circle Avatar */}
+          <div
+            className="w-8 h-8 rounded-full bg-stone-900 text-amber-300 font-bold text-xs flex items-center justify-center shadow-xs border border-amber-600/40 select-none"
+            title="Diversion Vigan Front-Desk Staff"
+          >
+            DV
           </div>
 
-          {/* Nav Items */}
-          <nav className="flex items-center gap-1 sm:gap-2">
-            <button
-              onClick={() => setActiveTab('explore')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === 'explore'
-                  ? 'bg-amber-700 text-white shadow-xs'
-                  : 'text-[#503b2f] dark:text-[#ddcbbb] hover:bg-amber-50 dark:hover:bg-[#281e18]'
-              }`}
-            >
-              <Building2 className="w-4 h-4" />
-              <span>Rooms & Rates</span>
-            </button>
-
-            <button
-              onClick={onOpenLookup}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === 'lookup'
-                  ? 'bg-amber-700 text-white shadow-xs'
-                  : 'text-[#503b2f] dark:text-[#ddcbbb] hover:bg-amber-50 dark:hover:bg-[#281e18]'
-              }`}
-            >
-              <Search className="w-4 h-4" />
-              <span className="hidden md:inline">Find My Booking</span>
-              <span className="md:hidden">Lookup</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('custom-rates')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === 'custom-rates'
-                  ? 'bg-amber-700 text-white shadow-xs'
-                  : 'text-[#503b2f] dark:text-[#ddcbbb] hover:bg-amber-50 dark:hover:bg-[#281e18]'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span className="hidden md:inline">Rate Structure</span>
-              <span className="md:hidden">Rates</span>
-            </button>
-
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
-
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === 'admin'
-                  ? 'bg-[#2a1c14] text-amber-300 ring-2 ring-amber-500'
-                  : 'border border-[#d2bfad] dark:border-[#4d3b30] text-[#3d2c22] dark:text-[#ecdcd0] hover:bg-[#faf4ee] dark:hover:bg-[#2a201a]'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>Admin Portal</span>
-            </button>
-          </nav>
+          {/* Subtle Theme Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+            title={`Toggle ${isDark ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle theme"
+          >
+            {isDark ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <Moon className="w-3.5 h-3.5 text-slate-600" />
+            )}
+          </button>
         </div>
       </div>
     </header>

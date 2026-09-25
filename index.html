@@ -1,25 +1,28 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diversion Vigan | Transient and Private Villa</title>
-    <meta name="description" content="Diversion Vigan - Transient and Private Villa booking portal and front-desk management in Vigan City, Ilocos Sur." />
-    <meta property="og:title" content="Diversion Vigan | Transient and Private Villa" />
-    <meta property="og:description" content="Diversion Vigan - Transient and Private Villa booking portal and front-desk management in Vigan City, Ilocos Sur." />
-    <link rel="icon" type="image/jpeg" href="/diversion_logo.jpg" />
+    <title>Diversion Transient Room Booking System</title>
+    <meta name="description" content="A high-performance guest booking interface and front-desk control panel for transient room management." />
+    <meta property="og:title" content="Diversion Transient Room Booking System" />
+    <meta property="og:description" content="A high-performance guest booking interface and front-desk control panel for transient room management." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script>
-      try {
-        var theme = localStorage.getItem('theme');
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      } catch (e) {}
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
     </script>
   </head>
-  <body class="bg-[#faf7f2] dark:bg-[#140f0c] text-[#221912] dark:text-[#fcf9ee] antialiased">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
