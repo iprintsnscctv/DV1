@@ -541,7 +541,7 @@ export const INITIAL_ROOMS: Room[] = [
 export const INITIAL_RESERVATIONS: Reservation[] = [
   {
     id: 'res-101',
-    confirmationCode: 'DV-0126',
+    confirmationCode: 'DIV-8921-XQ',
     roomId: 'room-1',
     roomName: 'Room 1 - Standard Family Suite',
     roomNumber: '1',
@@ -559,7 +559,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
   },
   {
     id: 'res-102',
-    confirmationCode: 'DV-0226',
+    confirmationCode: 'DIV-5412-MK',
     roomId: 'room-3',
     roomName: 'Room 3 - Heritage Balcony Suite',
     roomNumber: '3',
@@ -577,7 +577,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
   },
   {
     id: 'res-103',
-    confirmationCode: 'DV-0326',
+    confirmationCode: 'DIV-3321-PR',
     roomId: 'room-0',
     roomName: 'Room 0 - Ground Floor Studio',
     roomNumber: '0',

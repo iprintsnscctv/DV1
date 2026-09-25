@@ -424,7 +424,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           Account Registration Required to Book
                         </h4>
                         <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5 leading-relaxed">
-                          Guests must register an account before booking. Your confirmed receipt, QR code, and check-in slip will be saved in <strong>My Booking</strong>.
+                          Guests must register an account before booking. Your confirmed voucher, QR code, and check-in slip will be saved in <strong>My Booking</strong>.
                         </p>
                       </div>
                     </div>

@@ -19,7 +19,6 @@ import { RoomDetailModal } from './components/GuestView/RoomDetailModal';
 import { BookingModal } from './components/GuestView/BookingModal';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { DiversionLogo } from './components/DiversionLogo';
-import { generateReceiptNumber } from './utils/receiptNumber';
 
 export default function App() {
   const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
@@ -174,11 +173,11 @@ export default function App() {
       return;
     }
 
-    const receiptCode = generateReceiptNumber(reservations);
+    const randomCode = `DIV-${Math.floor(1000 + Math.random() * 9000)}-${['XZ', 'MK', 'PR', 'QW'][Math.floor(Math.random() * 4)]}`;
     const newReservation: Reservation = {
       ...newResData,
       id: `res-${Date.now()}`,
-      confirmationCode: receiptCode,
+      confirmationCode: randomCode,
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'upcoming',
     };
@@ -195,20 +194,20 @@ export default function App() {
       console.warn('Backend booking save failed, cached in memory:', err)
     );
 
-    // Switch to My Booking so guest can inspect receipt
+    // Switch to My Booking so guest can inspect voucher
     setGuestSubTab('my-booking');
-    showToast('Booking confirmed! Check your official receipt in My Booking.', 'success');
+    showToast('Booking confirmed! Check your official voucher in My Booking.', 'success');
   };
 
   // Create walk-in reservation from admin
   const handleCreateWalkIn = (
     newResData: Omit<Reservation, 'id' | 'confirmationCode' | 'createdAt'>
   ) => {
-    const receiptCode = generateReceiptNumber(reservations);
+    const randomCode = `DIV-WALK-${Math.floor(1000 + Math.random() * 9000)}`;
     const newReservation: Reservation = {
       ...newResData,
       id: `res-${Date.now()}`,
-      confirmationCode: receiptCode,
+      confirmationCode: randomCode,
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
     };
 
@@ -367,10 +366,6 @@ export default function App() {
               © {new Date().getFullYear()} Diversion Vigan • Transient and Private Villa. All rights reserved.
             </p>
           </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-8 pt-4 border-t border-amber-900/10 dark:border-amber-900/20 text-center text-xs text-[#806c5d] dark:text-[#9e8d7f]">
-          <p>Designed &amp; Developed by James Mait</p>
         </div>
       </footer>
 
