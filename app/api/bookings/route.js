@@ -162,6 +162,11 @@ export async function PUT(request) {
   }
 }
 
+// PATCH /api/bookings
+export async function PATCH(request) {
+  return PUT(request);
+}
+
 // DELETE /api/bookings
 export async function DELETE(request) {
   try {
