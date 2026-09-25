@@ -1,7 +1,26 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const viteUrl = import.meta.env.VITE_SUPABASE_URL;
-const viteAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const getEnv = (key: string, nextKey?: string): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
+      return (import.meta as any).env[key];
+    }
+  } catch {
+    // fallback
+  }
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      if (nextKey && process.env[nextKey]) return process.env[nextKey] as string;
+      if (process.env[key]) return process.env[key] as string;
+    }
+  } catch {
+    // fallback
+  }
+  return '';
+};
+
+const viteUrl = getEnv('VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL') || 'https://xdggjrorpafpwsnixlww.supabase.co';
+const viteAnonKey = getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || getEnv('VITE_SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY') || 'sb_publishable_nApChRkKMTd2y2DMV-0fng_n0PrjENb';
 
 export let browserSupabase: SupabaseClient | null = null;
 

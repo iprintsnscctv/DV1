@@ -4,8 +4,8 @@ import { DBData, Room, Reservation } from '../types';
 let supabaseClient: SupabaseClient | null = null;
 
 export function getSupabaseClient(): SupabaseClient | null {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://xdggjrorpafpwsnixlww.supabase.co';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_nApChRkKMTd2y2DMV-0fng_n0PrjENb';
 
   if (!url || !key) {
     return null;
@@ -30,8 +30,8 @@ export function isSupabaseConfigured(): boolean {
 }
 
 export function getSupabaseStatus() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || null;
-  const hasAnonKey = Boolean(process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY);
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xdggjrorpafpwsnixlww.supabase.co';
+  const hasAnonKey = Boolean(process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_nApChRkKMTd2y2DMV-0fng_n0PrjENb');
   const hasServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   return {
@@ -56,10 +56,15 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
     const { error: roomsError } = await client.from('rooms').select('id').limit(1);
 
     if (roomsError) {
-      if (roomsError.code === '42P01' || roomsError.message?.includes('relation "rooms" does not exist')) {
+      if (
+        roomsError.code === '42P01' ||
+        roomsError.code === 'PGRST205' ||
+        roomsError.message?.includes('relation "rooms" does not exist') ||
+        roomsError.message?.includes('Could not find the table')
+      ) {
         return {
           success: true,
-          message: 'Connected to Supabase project successfully! Note: The "rooms" table is not created yet. Run the SQL schema script below in your Supabase SQL Editor.',
+          message: 'Connected to Supabase project successfully! Note: The "rooms" table is not created yet. Copy and run the SQL schema script below in your Supabase SQL Editor.',
           details: { tablesReady: false },
         };
       }
