@@ -116,6 +116,15 @@ export const HeroBanner: React.FC = () => {
               <img
                 src={spot.image}
                 alt={spot.name}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  // Fallback to high-quality Vigan heritage image if external host restricts
+                  const target = e.currentTarget;
+                  if (!target.dataset.fallback) {
+                    target.dataset.fallback = 'true';
+                    target.src = 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1600&q=80';
+                  }
+                }}
                 className={`w-full h-full object-cover object-center transform transition-transform duration-[6000ms] ease-out ${
                   isActive ? 'scale-110 translate-x-1 -translate-y-1' : 'scale-100'
                 }`}
