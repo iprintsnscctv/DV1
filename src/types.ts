@@ -111,3 +111,31 @@ export interface CustomerUser {
   createdAt: string;
 }
 
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ReviewMedia {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  name?: string;
+}
+
+export interface GuestReview {
+  id: string;
+  roomId: string;
+  roomName: string;
+  roomNumber?: string;
+  reservationId?: string;
+  guestId: string;
+  guestName: string;
+  guestEmail?: string;
+  rating: number; // 1 to 5
+  title: string;
+  comment: string;
+  media: ReviewMedia[];
+  status: ReviewStatus;
+  createdAt: string;
+  adminFeedback?: string;
+  reviewedAt?: string;
+}
+

@@ -110,12 +110,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             setAuthError('Please enter your full name.');
             return;
           }
-          if (!guestEmail.trim() || !guestEmail.includes('@')) {
-            setAuthError('Please enter a valid email address.');
-            return;
-          }
           if (!guestPhone.trim()) {
             setAuthError('Please enter your contact phone number.');
+            return;
+          }
+          if (guestEmail.trim() && !guestEmail.includes('@')) {
+            setAuthError('Please enter a valid email address or leave it empty.');
             return;
           }
           if (!password || password.length < 6) {
@@ -142,7 +142,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         } else {
           // Login Mode
           if (!guestEmail.trim()) {
-            setAuthError('Please enter your registered email.');
+            setAuthError('Please enter your contact number or registered email.');
             return;
           }
           if (!password) {
@@ -152,7 +152,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           const res = loginCustomer(guestEmail, password);
           if (!res.success || !res.user) {
-            setAuthError(res.error || 'Invalid email or password.');
+            setAuthError(res.error || 'Invalid contact number, email, or password.');
             return;
           }
 
@@ -424,7 +424,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           Account Registration Required to Book
                         </h4>
                         <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5 leading-relaxed">
-                          Guests must register an account before booking. Your confirmed voucher, QR code, and check-in slip will be saved in <strong>My Booking</strong>.
+                          Guests must register an account before booking. Your confirmed receipt, QR code, and check-in slip will be saved in <strong>My Booking</strong>.
                         </p>
                       </div>
                     </div>
@@ -476,7 +476,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <div className="space-y-3">
                         <div>
                           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Full Name
+                            Full Name <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
                             <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -486,7 +486,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                               value={guestName}
                               onChange={(e) => setGuestName(e.target.value)}
                               placeholder="Juan Dela Cruz"
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                            Contact / Phone Number <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                            <input
+                              type="tel"
+                              required
+                              value={guestPhone}
+                              onChange={(e) => setGuestPhone(e.target.value)}
+                              placeholder="+63 917 123 4567"
+                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                           </div>
                         </div>
@@ -494,43 +511,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Email Address
-                            </label>
-                            <div className="relative">
-                              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type="email"
-                                required
-                                value={guestEmail}
-                                onChange={(e) => setGuestEmail(e.target.value)}
-                                placeholder="juan@example.com"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Phone Number
-                            </label>
-                            <div className="relative">
-                              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type="tel"
-                                required
-                                value={guestPhone}
-                                onChange={(e) => setGuestPhone(e.target.value)}
-                                placeholder="+63 917 000 0000"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Password (min 6 chars)
+                              Password (min 6 chars) <span className="text-rose-500">*</span>
                             </label>
                             <div className="relative">
                               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -540,12 +521,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                               >
                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                               </button>
@@ -554,7 +535,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                           <div>
                             <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Confirm Password
+                              Confirm Password <span className="text-rose-500">*</span>
                             </label>
                             <div className="relative">
                               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -564,9 +545,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                               />
                             </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[11px] font-bold text-slate-500 uppercase">
+                              Email Address
+                            </label>
+                            <span className="text-[10px] text-slate-400 font-semibold">(Optional)</span>
+                          </div>
+                          <div className="relative">
+                            <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                            <input
+                              type="email"
+                              value={guestEmail}
+                              onChange={(e) => setGuestEmail(e.target.value)}
+                              placeholder="juan@example.com (optional)"
+                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            />
                           </div>
                         </div>
                       </div>
@@ -575,17 +575,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       <div className="space-y-3">
                         <div>
                           <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Registered Email Address
+                            Contact Number or Email
                           </label>
                           <div className="relative">
-                            <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                            <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                             <input
-                              type="email"
+                              type="text"
                               required
                               value={guestEmail}
                               onChange={(e) => setGuestEmail(e.target.value)}
-                              placeholder="sarah@example.com"
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                              placeholder="Enter contact number or email"
+                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                           </div>
                         </div>
@@ -602,35 +602,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                               placeholder="••••••••"
-                              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                             />
                             <button
                               type="button"
                               onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                             >
                               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Demo Accounts Quick-Fill */}
-                        <div className="pt-1">
-                          <span className="text-[10px] text-slate-400 block mb-1">Or test with demo account:</span>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleQuickDemoLogin('alex.wright@example.com')}
-                              className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700"
-                            >
-                              Alex Wright (Demo)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleQuickDemoLogin('elena.rostova@example.com')}
-                              className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-700"
-                            >
-                              Elena Rostova (Demo)
                             </button>
                           </div>
                         </div>

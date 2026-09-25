@@ -63,22 +63,38 @@ export const registerCustomer = (
   password: string,
   phone: string
 ): { success: boolean; error?: string; user?: CustomerUser } => {
-  const cleanEmail = email.trim().toLowerCase();
   if (!name.trim()) return { success: false, error: 'Full name is required.' };
-  if (!cleanEmail || !cleanEmail.includes('@')) return { success: false, error: 'Valid email address is required.' };
+  if (!phone.trim()) return { success: false, error: 'Contact phone number is required.' };
   if (!password || password.length < 6) return { success: false, error: 'Password must be at least 6 characters.' };
 
+  const rawEmail = email.trim().toLowerCase();
+  if (rawEmail && !rawEmail.includes('@')) {
+    return { success: false, error: 'Please enter a valid email address or leave it empty.' };
+  }
+
+  const cleanPhone = phone.trim();
+  const digitsOnlyPhone = cleanPhone.replace(/[^0-9]/g, '');
+  const cleanEmail = rawEmail || `${digitsOnlyPhone || Date.now()}@guest.diversionvigan.ph`;
+
   const customers = getStoredCustomers();
-  const existing = customers.find((c) => c.email.toLowerCase() === cleanEmail);
+  const existing = customers.find(
+    (c) =>
+      (rawEmail && c.email.toLowerCase() === rawEmail) ||
+      (digitsOnlyPhone && c.phone.replace(/[^0-9]/g, '') === digitsOnlyPhone)
+  );
+
   if (existing) {
-    return { success: false, error: 'An account with this email already exists. Please sign in instead.' };
+    return {
+      success: false,
+      error: 'An account with this contact number or email already exists. Please sign in.',
+    };
   }
 
   const newCustomer: StoredCustomer = {
     id: `cust-${Date.now()}`,
     name: name.trim(),
     email: cleanEmail,
-    phone: phone.trim() || '+63 900 000 0000',
+    phone: cleanPhone,
     passwordHash: password,
     createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
   };
@@ -108,15 +124,22 @@ export const registerCustomer = (
 };
 
 export const loginCustomer = (
-  email: string,
+  identifier: string,
   password: string
 ): { success: boolean; error?: string; user?: CustomerUser } => {
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanId = identifier.trim().toLowerCase();
+  const digitsOnlyId = cleanId.replace(/[^0-9]/g, '');
   const customers = getStoredCustomers();
-  const found = customers.find((c) => c.email.toLowerCase() === cleanEmail);
+
+  const found = customers.find(
+    (c) =>
+      c.email.toLowerCase() === cleanId ||
+      c.phone.toLowerCase() === cleanId ||
+      (digitsOnlyId.length >= 7 && c.phone.replace(/[^0-9]/g, '') === digitsOnlyId)
+  );
 
   if (!found) {
-    return { success: false, error: 'No account found with this email. Please register first.' };
+    return { success: false, error: 'No account found with this contact or email. Please register first.' };
   }
 
   if (found.passwordHash !== password) {

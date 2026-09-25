@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Room, Reservation, FilterState, RoomStatus, CustomerUser } from './types';
+import { Room, Reservation, FilterState, RoomStatus, CustomerUser, GuestReview } from './types';
 import { INITIAL_ROOMS, INITIAL_RESERVATIONS } from './data/mockData';
 import {
   fetchRooms,
@@ -9,22 +9,31 @@ import {
   updateRoomOnServer,
 } from './services/api';
 import { getCurrentCustomer } from './utils/customerAuth';
+import { getCurrentAdminSession, logoutAdmin, AdminAccount } from './utils/adminAuth';
+import { getStoredReviews, saveReview, updateReviewStatus, deleteStoredReview } from './utils/reviewStorage';
 import { Header } from './components/Header';
 import { GuestDashboard } from './components/GuestView/GuestDashboard';
 import { AdminDashboard } from './components/AdminView/AdminDashboard';
+import { AdminLoginModal } from './components/AdminView/AdminLoginModal';
 import { RoomDetailModal } from './components/GuestView/RoomDetailModal';
 import { BookingModal } from './components/GuestView/BookingModal';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { DiversionLogo } from './components/DiversionLogo';
+import { generateReceiptNumber } from './utils/receiptNumber';
 
 export default function App() {
   const [rooms, setRooms] = useState<Room[]>(INITIAL_ROOMS);
   const [reservations, setReservations] = useState<Reservation[]>(INITIAL_RESERVATIONS);
+  const [reviews, setReviews] = useState<GuestReview[]>(() => getStoredReviews());
   const [currentView, setCurrentView] = useState<'guest' | 'admin'>('guest');
-  const [guestSubTab, setGuestSubTab] = useState<'all' | 'saved' | 'my-booking'>('all');
+  const [guestSubTab, setGuestSubTab] = useState<'all' | 'saved' | 'my-booking' | 'contact'>('all');
 
   // Customer Account Auth State
   const [currentCustomer, setCurrentCustomer] = useState<CustomerUser | null>(() => getCurrentCustomer());
+
+  // Admin Account Auth State
+  const [currentAdmin, setCurrentAdmin] = useState<AdminAccount | null>(() => getCurrentAdminSession());
+  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
 
   // Search Bar Criteria (synced with Booking Modal)
   const [checkInDate, setCheckInDate] = useState('2026-09-24');
@@ -165,11 +174,11 @@ export default function App() {
       return;
     }
 
-    const randomCode = `DIV-${Math.floor(1000 + Math.random() * 9000)}-${['XZ', 'MK', 'PR', 'QW'][Math.floor(Math.random() * 4)]}`;
+    const receiptCode = generateReceiptNumber(reservations);
     const newReservation: Reservation = {
       ...newResData,
       id: `res-${Date.now()}`,
-      confirmationCode: randomCode,
+      confirmationCode: receiptCode,
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
       status: 'upcoming',
     };
@@ -186,20 +195,20 @@ export default function App() {
       console.warn('Backend booking save failed, cached in memory:', err)
     );
 
-    // Switch to My Booking so guest can inspect voucher
+    // Switch to My Booking so guest can inspect receipt
     setGuestSubTab('my-booking');
-    showToast('Booking confirmed! Check your official voucher in My Booking.', 'success');
+    showToast('Booking confirmed! Check your official receipt in My Booking.', 'success');
   };
 
   // Create walk-in reservation from admin
   const handleCreateWalkIn = (
     newResData: Omit<Reservation, 'id' | 'confirmationCode' | 'createdAt'>
   ) => {
-    const randomCode = `DIV-WALK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const receiptCode = generateReceiptNumber(reservations);
     const newReservation: Reservation = {
       ...newResData,
       id: `res-${Date.now()}`,
-      confirmationCode: randomCode,
+      confirmationCode: receiptCode,
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
     };
 
@@ -237,6 +246,27 @@ export default function App() {
     );
   };
 
+  // Review management handlers
+  const handleSubmitReview = (newReview: GuestReview) => {
+    const updated = saveReview(newReview);
+    setReviews(updated);
+  };
+
+  const handleApproveReview = (reviewId: string) => {
+    const updated = updateReviewStatus(reviewId, 'approved');
+    setReviews(updated);
+  };
+
+  const handleRejectReview = (reviewId: string, feedback?: string) => {
+    const updated = updateReviewStatus(reviewId, 'rejected', feedback);
+    setReviews(updated);
+  };
+
+  const handleDeleteReview = (reviewId: string) => {
+    const updated = deleteStoredReview(reviewId);
+    setReviews(updated);
+  };
+
   const customerBookingsCount = currentCustomer
     ? reservations.filter((r) => r.guestEmail.toLowerCase() === currentCustomer.email.toLowerCase()).length
     : 0;
@@ -250,8 +280,16 @@ export default function App() {
         savedCount={savedRoomIds.length}
         customerBookingsCount={customerBookingsCount}
         onViewChange={(view) => {
-          setCurrentView(view);
-          if (view === 'guest') setGuestSubTab('all');
+          if (view === 'admin') {
+            if (!currentAdmin) {
+              setShowAdminLoginModal(true);
+            } else {
+              setCurrentView('admin');
+            }
+          } else {
+            setCurrentView('guest');
+            setGuestSubTab('all');
+          }
         }}
         onGuestSubTabChange={(tab) => {
           setCurrentView('guest');
@@ -267,6 +305,7 @@ export default function App() {
             filters={filters}
             savedRoomIds={savedRoomIds}
             reservations={reservations}
+            reviews={reviews}
             guestSubTab={guestSubTab}
             currentCustomer={currentCustomer}
             checkInDate={checkInDate}
@@ -282,6 +321,7 @@ export default function App() {
             onGuestsCountChange={setGuestsCount}
             onSwitchToCatalog={() => setGuestSubTab('all')}
             onCustomerChange={setCurrentCustomer}
+            onSubmitReview={handleSubmitReview}
             onCancelReservation={(id) => handleUpdateReservationStatus(id, 'cancelled')}
             onShowToast={showToast}
           />
@@ -289,6 +329,17 @@ export default function App() {
           <AdminDashboard
             rooms={rooms}
             reservations={reservations}
+            reviews={reviews}
+            onApproveReview={handleApproveReview}
+            onRejectReview={handleRejectReview}
+            onDeleteReview={handleDeleteReview}
+            currentAdmin={currentAdmin}
+            onLogoutAdmin={() => {
+              logoutAdmin();
+              setCurrentAdmin(null);
+              setCurrentView('guest');
+              showToast('Logged out from Admin session.', 'info');
+            }}
             onUpdateRoomStatus={handleUpdateRoomStatus}
             onUpdateReservationStatus={handleUpdateReservationStatus}
             onCreateWalkInReservation={handleCreateWalkIn}
@@ -323,6 +374,7 @@ export default function App() {
       {selectedRoomForDetails && (
         <RoomDetailModal
           room={selectedRoomForDetails}
+          reviews={reviews}
           onClose={() => setSelectedRoomForDetails(null)}
           onBook={(room) => {
             setSelectedRoomForDetails(null);
@@ -348,6 +400,17 @@ export default function App() {
 
       {/* Toast Notification Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Admin / Staff Login Modal */}
+      <AdminLoginModal
+        isOpen={showAdminLoginModal}
+        onClose={() => setShowAdminLoginModal(false)}
+        onLoginSuccess={(admin) => {
+          setCurrentAdmin(admin);
+          setCurrentView('admin');
+        }}
+        onShowToast={showToast}
+      />
     </div>
   );
 }

@@ -1,16 +1,28 @@
 import React, { useState } from 'react';
-import { Room } from '../../types';
-import { X, Users, Check, Shield, Clock, Calendar, ChevronLeft, ChevronRight, Sparkles, AlertCircle } from 'lucide-react';
+import { Room, GuestReview, ReviewMedia } from '../../types';
+import { 
+  X, Users, Check, Shield, Clock, Calendar, ChevronLeft, ChevronRight, 
+  Sparkles, AlertCircle, Star, Image as ImageIcon, Video, Play, ShieldCheck, MessageSquare 
+} from 'lucide-react';
 import { formatPHP } from '../../utils/formatCurrency';
 
 interface RoomDetailModalProps {
   room: Room;
+  reviews?: GuestReview[];
   onClose: () => void;
   onBook: (room: Room) => void;
 }
 
-export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({ room, onClose, onBook }) => {
+export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({ 
+  room, 
+  reviews = [], 
+  onClose, 
+  onBook 
+}) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [activeMedia, setActiveMedia] = useState<ReviewMedia | null>(null);
+
+  const roomReviews = reviews.filter((r) => r.roomId === room.id && r.status === 'approved');
 
   const nextImage = () => {
     setActiveImageIndex((prev) => (prev + 1) % room.images.length);
@@ -225,6 +237,110 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({ room, onClose,
                 </div>
               </div>
             </div>
+
+            {/* Verified Guest Reviews & Media Showcase */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>Verified Guest Reviews &amp; Media ({roomReviews.length})</span>
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Real photos, walkthrough videos, and honest feedback from verified guests.
+                  </p>
+                </div>
+              </div>
+
+              {roomReviews.length > 0 ? (
+                <div className="space-y-3.5">
+                  {roomReviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-white font-bold text-xs flex items-center justify-center">
+                            {rev.guestName[0]}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <span>{rev.guestName}</span>
+                              <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 flex items-center gap-0.5">
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                <span>Verified Stay</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-3.5 h-3.5 ${
+                                  s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[11px] text-slate-400">({rev.createdAt})</span>
+                        </div>
+                      </div>
+
+                      <h5 className="font-bold text-xs text-slate-900 dark:text-white">
+                        "{rev.title}"
+                      </h5>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {rev.comment}
+                      </p>
+
+                      {/* Review Photos & Videos */}
+                      {rev.media && rev.media.length > 0 && (
+                        <div className="flex items-center gap-2.5 pt-1 flex-wrap">
+                          {rev.media.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() => setActiveMedia(item)}
+                              className="relative group w-20 h-16 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-900 cursor-pointer hover:ring-2 hover:ring-amber-500 transition-all shrink-0"
+                            >
+                              {item.type === 'image' ? (
+                                <img
+                                  src={item.url}
+                                  alt={item.name || 'Review Photo'}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <div className="w-full h-full relative flex items-center justify-center bg-slate-900">
+                                  <video
+                                    src={item.url}
+                                    className="w-full h-full object-cover opacity-75"
+                                    muted
+                                  />
+                                  <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                                  </span>
+                                  <span className="absolute bottom-0.5 right-1 text-[7px] font-bold px-1 rounded bg-black/80 text-white">
+                                    VIDEO
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 text-center text-xs text-slate-400">
+                  Be the first verified guest to review this room after your stay!
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Footer Action */}
@@ -259,6 +375,44 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({ room, onClose,
             </div>
           </div>
         </div>
+
+        {/* Media Lightbox */}
+        {activeMedia && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="relative max-w-4xl w-full bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 text-white">
+                <span className="text-xs font-bold flex items-center gap-2">
+                  {activeMedia.type === 'video' ? <Video className="w-4 h-4 text-rose-500" /> : <ImageIcon className="w-4 h-4 text-amber-500" />}
+                  {activeMedia.name || 'Guest Media'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveMedia(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 flex items-center justify-center bg-black min-h-[300px] max-h-[75vh]">
+                {activeMedia.type === 'image' ? (
+                  <img
+                    src={activeMedia.url}
+                    alt={activeMedia.name || 'Enlarged Review Photo'}
+                    className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl"
+                  />
+                ) : (
+                  <video
+                    src={activeMedia.url}
+                    controls
+                    autoPlay
+                    className="max-h-[70vh] w-full object-contain rounded-xl"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
 };

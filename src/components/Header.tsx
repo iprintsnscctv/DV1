@@ -1,17 +1,17 @@
 import React from 'react';
-import { Compass, Heart, Calendar, SlidersHorizontal, Sun, Moon, User, UserCheck } from 'lucide-react';
+import { Compass, Heart, Calendar, SlidersHorizontal, Sun, Moon, User, UserCheck, Phone } from 'lucide-react';
 import { CustomerUser } from '../types';
 import { DiversionLogo } from './DiversionLogo';
 
 interface HeaderProps {
   currentView: 'guest' | 'admin';
-  guestSubTab?: 'all' | 'saved' | 'my-booking';
+  guestSubTab?: 'all' | 'saved' | 'my-booking' | 'contact';
   currentCustomer: CustomerUser | null;
   savedCount?: number;
   customerBookingsCount?: number;
   onViewChange: (view: 'guest' | 'admin') => void;
-  onGuestSubTabChange?: (tab: 'all' | 'saved' | 'my-booking') => void;
-  onShowToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  onGuestSubTabChange?: (tab: 'all' | 'saved' | 'my-booking' | 'contact') => void;
+  onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -132,13 +132,30 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </button>
+
+          {/* Contact Us */}
+          <button
+            type="button"
+            onClick={() => {
+              onViewChange('guest');
+              onGuestSubTabChange?.('contact');
+            }}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              currentView === 'guest' && guestSubTab === 'contact'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-400/80 dark:border-rose-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60'
+            }`}
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Contact Us</span>
+          </button>
         </div>
 
         {/* Right: Admin Control Button & DV Avatar */}
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => onViewChange(currentView === 'admin' ? 'guest' : 'admin')}
+            onClick={() => onViewChange('admin')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-xs transition-all active:scale-95 cursor-pointer ${
               currentView === 'admin'
                 ? 'bg-slate-300/50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border border-slate-300/70 dark:border-slate-700 shadow-xs'
@@ -146,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5 opacity-60" />
-            <span>{currentView === 'admin' ? 'Guest View' : 'Front Desk'}</span>
+            <span>Admin</span>
           </button>
 
           {/* DV Circle Avatar */}

@@ -1,8 +1,10 @@
 import React from 'react';
-import { Room, FilterState, Reservation, CustomerUser } from '../../types';
+import { Room, FilterState, Reservation, CustomerUser, GuestReview } from '../../types';
 import { RoomCard } from './RoomCard';
 import { BookingSearchBar } from './BookingSearchBar';
 import { CategoryTabs } from './CategoryTabs';
+import { HeroBanner } from './HeroBanner';
+import { ContactLocationSection } from './ContactLocationSection';
 import { CustomerPortalView } from '../CustomerPortal/CustomerPortalView';
 import { Search, Heart } from 'lucide-react';
 
@@ -11,7 +13,8 @@ interface GuestDashboardProps {
   filters: FilterState;
   savedRoomIds: string[];
   reservations: Reservation[];
-  guestSubTab: 'all' | 'saved' | 'my-booking';
+  reviews?: GuestReview[];
+  guestSubTab: 'all' | 'saved' | 'my-booking' | 'contact';
   currentCustomer: CustomerUser | null;
   checkInDate: string;
   checkOutDate: string;
@@ -26,6 +29,7 @@ interface GuestDashboardProps {
   onGuestsCountChange: (count: number) => void;
   onSwitchToCatalog: () => void;
   onCustomerChange: (user: CustomerUser | null) => void;
+  onSubmitReview?: (review: GuestReview) => void;
   onCancelReservation: (reservationId: string) => void;
   onShowToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -35,6 +39,7 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
   filters,
   savedRoomIds,
   reservations,
+  reviews = [],
   guestSubTab,
   currentCustomer,
   checkInDate,
@@ -50,6 +55,7 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
   onGuestsCountChange,
   onSwitchToCatalog,
   onCustomerChange,
+  onSubmitReview,
   onCancelReservation,
   onShowToast,
 }) => {
@@ -84,16 +90,25 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
           currentCustomer={currentCustomer}
           reservations={reservations}
           rooms={rooms}
+          reviews={reviews}
+          onSubmitReview={onSubmitReview}
           onCustomerChange={onCustomerChange}
           onCancelReservation={onCancelReservation}
           onNavigateToCatalog={onSwitchToCatalog}
           onShowToast={onShowToast}
         />
+      ) : guestSubTab === 'contact' ? (
+        /* If Viewing Dedicated Contact Us Page */
+        <ContactLocationSection onShowToast={onShowToast} />
       ) : (
         <>
+          {/* Top Hero Section matching user reference image */}
+          <HeroBanner />
+
           {/* Top Search Widget matching screenshot */}
           <BookingSearchBar
-            location="Diversion Road, Vigan City"
+            selectedCategory={filters.category}
+            onSelectCategory={(category) => onFilterChange({ category })}
             checkInDate={checkInDate}
             checkOutDate={checkOutDate}
             guestsCount={guestsCount}
@@ -135,6 +150,11 @@ export const GuestDashboard: React.FC<GuestDashboardProps> = ({
                   key={room.id}
                   room={room}
                   isSaved={savedRoomIds.includes(room.id)}
+                  reservations={reservations}
+                  checkInDate={checkInDate}
+                  checkOutDate={checkOutDate}
+                  onCheckInChange={onCheckInChange}
+                  onCheckOutChange={onCheckOutChange}
                   onToggleSave={onToggleSaveRoom}
                   onSelect={onSelectRoom}
                   onBook={onBookRoom}

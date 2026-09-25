@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
-import { Room, Reservation, RoomStatus, RoomCustomRates } from '../../types';
+import { Room, Reservation, RoomStatus, RoomCustomRates, GuestReview } from '../../types';
 import { 
   Building2, Users, Calendar, DollarSign, CheckCircle2, AlertCircle, 
   Clock, Plus, Search, Filter, Shield, Sparkles, RefreshCw, Eye, Edit3, Trash2, Check, X,
-  Sliders, ListFilter, LayoutGrid, Tag, ArrowUpRight, Upload, Image as ImageIcon, Database
+  Sliders, ListFilter, LayoutGrid, Tag, ArrowUpRight, Upload, Image as ImageIcon, Database,
+  MessageSquare
 } from 'lucide-react';
 import { formatPHP } from '../../utils/formatCurrency';
 import { calculateRoomPricing, getRoomCustomRateSummary } from '../../utils/pricingCalculator';
 import { CustomRatesModal } from './CustomRatesModal';
 import { RoomEditModal } from './RoomEditModal';
 import { SupabaseSettingsModal } from './SupabaseSettingsModal';
+import { StaffManagementModal } from './StaffManagementModal';
+import { ReviewScreeningSection } from './ReviewScreeningSection';
+import { AdminAccount } from '../../utils/adminAuth';
 
 interface AdminDashboardProps {
   rooms: Room[];
   reservations: Reservation[];
+  reviews?: GuestReview[];
+  onApproveReview?: (reviewId: string) => void;
+  onRejectReview?: (reviewId: string, feedback?: string) => void;
+  onDeleteReview?: (reviewId: string) => void;
+  currentAdmin?: AdminAccount | null;
+  onLogoutAdmin?: () => void;
   onUpdateRoomStatus: (roomId: string, status: RoomStatus, isClean: boolean) => void;
   onUpdateReservationStatus: (reservationId: string, status: Reservation['status']) => void;
   onCreateWalkInReservation: (reservation: Omit<Reservation, 'id' | 'confirmationCode' | 'createdAt'>) => void;
@@ -26,6 +36,12 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   rooms,
   reservations,
+  reviews = [],
+  onApproveReview,
+  onRejectReview,
+  onDeleteReview,
+  currentAdmin,
+  onLogoutAdmin,
   onUpdateRoomStatus,
   onUpdateReservationStatus,
   onCreateWalkInReservation,
@@ -34,10 +50,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onSaveRoomCustomRates,
   onShowToast,
 }) => {
-  const [activeTab, setActiveTab] = useState<'matrix' | 'reservations'>('matrix');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'reservations' | 'reviews'>('matrix');
   const [reservationSearch, setReservationSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [showStaffModal, setShowStaffModal] = useState(false);
+
+  const pendingReviewsCount = reviews.filter((r) => r.status === 'pending').length;
+
+  // Check current permissions (defaults to true if admin or unset)
+  const isMasterAdmin = currentAdmin?.role === 'admin' || !currentAdmin;
+  const canManageStaff = isMasterAdmin || currentAdmin?.permissions?.canManageStaff;
+  const canManageRooms = isMasterAdmin || currentAdmin?.permissions?.canManageRooms;
+  const canManageHousekeeping = isMasterAdmin || currentAdmin?.permissions?.canManageHousekeeping;
+  const canManageReservations = isMasterAdmin || currentAdmin?.permissions?.canManageReservations;
+  const canCreateWalkIn = isMasterAdmin || currentAdmin?.permissions?.canCreateWalkIn;
+  const canAccessSupabase = isMasterAdmin || currentAdmin?.permissions?.canAccessSupabase;
 
   // Matrix room forms state
   const [matrixRoomForms, setMatrixRoomForms] = useState<Record<string, any>>({});
@@ -221,37 +249,75 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowSupabaseModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 text-xs font-bold hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 shadow-xs transition-all cursor-pointer"
-            title="Configure Cloud PostgreSQL Database with Supabase"
-          >
-            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Supabase Settings</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Active Admin / Staff Session Badge */}
+          {currentAdmin && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-slate-600 dark:text-slate-300">
+                Logged in: <strong className="text-slate-900 dark:text-white">{currentAdmin.username}</strong>
+                {currentAdmin.role === 'admin' ? ' (Admin)' : ' (Staff)'}
+              </span>
+              {onLogoutAdmin && (
+                <button
+                  type="button"
+                  onClick={onLogoutAdmin}
+                  className="ml-1 text-[11px] text-rose-600 dark:text-rose-400 hover:underline font-semibold cursor-pointer"
+                >
+                  Logout
+                </button>
+              )}
+            </div>
+          )}
 
-          <button
-            onClick={() => {
-              setRoomForEdit(null);
-              setShowRoomEditModal(true);
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            <span>Add Room</span>
-          </button>
+          {/* Admin-only Staff Account Management */}
+          {canManageStaff && (
+            <button
+              onClick={() => setShowStaffModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300/40 dark:border-amber-700/40 text-xs font-bold shadow-xs transition-all cursor-pointer"
+              title="Create and manage staff accounts with restricted access"
+            >
+              <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Staff & Access Control</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => {
-              if (rooms.length > 0) setWalkInRoomId(rooms[0].id);
-              setShowWalkInModal(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md shadow-amber-600/25 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Walk-In Booking</span>
-          </button>
+          {canAccessSupabase && (
+            <button
+              onClick={() => setShowSupabaseModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 text-xs font-bold hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 shadow-xs transition-all cursor-pointer"
+              title="Configure Cloud PostgreSQL Database with Supabase"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Supabase Settings</span>
+            </button>
+          )}
+
+          {canManageRooms && (
+            <button
+              onClick={() => {
+                setRoomForEdit(null);
+                setShowRoomEditModal(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Add Room</span>
+            </button>
+          )}
+
+          {canCreateWalkIn && (
+            <button
+              onClick={() => {
+                if (rooms.length > 0) setWalkInRoomId(rooms[0].id);
+                setShowWalkInModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md shadow-amber-600/25 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Walk-In Booking</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -342,6 +408,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         >
           <Calendar className="w-4 h-4" />
           <span>Reservation Logs ({reservations.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeTab === 'reviews'
+              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>Guest Reviews Screening</span>
+          {pendingReviewsCount > 0 ? (
+            <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold animate-pulse">
+              {pendingReviewsCount}
+            </span>
+          ) : (
+            <span className="px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+              {reviews.length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -888,6 +975,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
+      {/* TAB 3: GUEST REVIEWS SCREENING */}
+      {activeTab === 'reviews' && (
+        <ReviewScreeningSection
+          reviews={reviews}
+          onApproveReview={(id) => onApproveReview?.(id)}
+          onRejectReview={(id, feedback) => onRejectReview?.(id, feedback)}
+          onDeleteReview={(id) => onDeleteReview?.(id)}
+          onShowToast={onShowToast}
+        />
+      )}
+
       {/* Custom Rates Modal (Days, Pax, Specific Dates) */}
       {roomForCustomRates && (
         <CustomRatesModal
@@ -1112,6 +1210,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onClose={() => setShowSupabaseModal(false)}
         onShowToast={onShowToast}
       />
+
+      {/* Staff Management & Access Restriction Modal */}
+      {showStaffModal && currentAdmin && (
+        <StaffManagementModal
+          currentAdmin={currentAdmin}
+          onClose={() => setShowStaffModal(false)}
+          onShowToast={onShowToast}
+        />
+      )}
     </div>
   );
 };
