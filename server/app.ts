@@ -18,7 +18,12 @@ export function createApp() {
 
   // Health check endpoint
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'diversion-vigan-api', timestamp: new Date().toISOString() });
+    if (res.headersSent) return;
+    return res.json({
+      status: 'ok',
+      service: 'diversion-vigan-api',
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // Dedicated API subrouters
@@ -26,6 +31,23 @@ export function createApp() {
   app.use('/api/reservations', reservationsRouter);
   app.use('/api/bookings', reservationsRouter);
   app.use('/api/settings', settingsRouter);
+
+  // Dedicated API 404 handler - prevents fall-through to HTML error pages
+  app.all('/api/*', (_req, res) => {
+    if (res.headersSent) return;
+    return res.status(404).json({ error: 'API route not found' });
+  });
+
+  // Global Error Handler guaranteeing headers are never modified after being sent
+  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (res.headersSent) {
+      return next(err);
+    }
+    const statusCode = typeof err.status === 'number' ? err.status : 500;
+    return res.status(statusCode).json({
+      error: err.message || 'Internal Server Error',
+    });
+  });
 
   return app;
 }

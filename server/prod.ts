@@ -12,8 +12,16 @@ const distPath = path.join(process.cwd(), 'dist');
 app.use(express.static(distPath));
 
 // Fallback to index.html for SPA routing
-app.get('*all', (_req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+app.get('*all', (req, res) => {
+  if (res.headersSent) return;
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err && !res.headersSent) {
+      res.status(500).send('Error loading application');
+    }
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

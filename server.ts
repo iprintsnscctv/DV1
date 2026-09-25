@@ -6,7 +6,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const bundledServer = path.resolve(process.cwd(), 'dist-server', 'server.js');
 
 if (isProduction && fs.existsSync(bundledServer)) {
-  await import('./dist-server/server.js');
+  await import(bundledServer);
 } else {
   const express = (await import('express')).default;
   const { createApp } = await import('./server/app.ts');
@@ -23,8 +23,16 @@ if (isProduction && fs.existsSync(bundledServer)) {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (_req: any, res: any) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get('*all', (req: any, res: any) => {
+      if (res.headersSent) return;
+      if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API route not found' });
+      }
+      res.sendFile(path.join(distPath, 'index.html'), (err: any) => {
+        if (err && !res.headersSent) {
+          res.status(500).send('Error loading application');
+        }
+      });
     });
   }
 
