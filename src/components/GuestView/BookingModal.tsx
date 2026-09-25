@@ -1,738 +1,460 @@
-import React, { useState, useEffect } from 'react';
-import { Room, Reservation, CustomerUser } from '../../types';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Calendar,
   Users,
   CreditCard,
-  CheckCircle2,
+  CheckCircle,
+  Copy,
+  Printer,
   ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
-  DollarSign,
-  Tag,
-  Clock,
-  UserCheck,
-  Lock,
-  Eye,
-  EyeOff,
-  User,
+  Sparkles,
   Phone,
   Mail,
-  AlertCircle,
-  ShieldAlert,
-  UserPlus,
-  LogIn,
+  User,
+  Info,
 } from 'lucide-react';
-import { formatPHP } from '../../utils/formatCurrency';
-import { calculateRoomPricing } from '../../utils/pricingCalculator';
-import { registerCustomer, loginCustomer } from '../../utils/customerAuth';
+import { Room, Reservation } from '../../types';
 
 interface BookingModalProps {
-  room: Room;
-  currentCustomer?: CustomerUser | null;
-  onCustomerChange?: (user: CustomerUser | null) => void;
-  initialCheckInDate?: string;
-  initialCheckOutDate?: string;
-  initialGuestsCount?: number;
+  room: Room | null;
   onClose: () => void;
-  onConfirmBooking: (reservation: Omit<Reservation, 'id' | 'confirmationCode' | 'createdAt' | 'status'>) => void;
-  onShowToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onConfirmBooking: (res: Reservation) => Promise<void>;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialGuests?: number;
 }
 
 export const BookingModal: React.FC<BookingModalProps> = ({
   room,
-  currentCustomer,
-  onCustomerChange,
-  initialCheckInDate,
-  initialCheckOutDate,
-  initialGuestsCount,
   onClose,
   onConfirmBooking,
-  onShowToast,
+  initialCheckIn,
+  initialCheckOut,
+  initialGuests = 2,
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [checkInDate, setCheckInDate] = useState(initialCheckInDate || '2026-09-24');
-  const [checkOutDate, setCheckOutDate] = useState(initialCheckOutDate || '2026-09-26');
-  const [numberOfGuests, setNumberOfGuests] = useState(
-    initialGuestsCount || room.customRates?.paxRule?.basePax || 1
-  );
+  if (!room) return null;
 
-  // Guest Details
-  const [guestName, setGuestName] = useState(currentCustomer?.name || '');
-  const [guestEmail, setGuestEmail] = useState(currentCustomer?.email || '');
-  const [guestPhone, setGuestPhone] = useState(currentCustomer?.phone || '');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+  const [checkIn, setCheckIn] = useState(initialCheckIn || todayStr);
+  const [checkOut, setCheckOut] = useState(initialCheckOut || tomorrowStr);
+  const [guests, setGuests] = useState(Math.min(initialGuests, room.capacity));
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<Reservation['paymentMethod']>('GCash / Mobile Money');
+  const [paymentMethod, setPaymentMethod] = useState<'GCash' | 'Maya' | 'Bank Transfer' | 'Cash'>('GCash');
 
-  // Registration & Login In-Modal States
-  const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [authError, setAuthError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmedReservation, setConfirmedReservation] = useState<Reservation | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Keep contact info in sync when currentCustomer changes
-  useEffect(() => {
-    if (currentCustomer) {
-      setGuestName(currentCustomer.name);
-      setGuestEmail(currentCustomer.email);
-      setGuestPhone(currentCustomer.phone);
+  // Calculate pricing breakdown
+  const { nights, breakdown, subtotal, discountAmount, totalAmount } = useMemo(() => {
+    const startDate = new Date(checkIn);
+    const endDate = new Date(checkOut);
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const calculatedNights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    let nightBreakdown: { date: string; dayName: string; isWeekend: boolean; rate: number }[] = [];
+    let sum = 0;
+
+    for (let i = 0; i < calculatedNights; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getDay(); // 0 is Sun, 5 is Fri, 6 is Sat
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+      // Check for custom date override
+      const dateOverride = room.customRates?.customDateRates?.find((r) => r.date === dateStr);
+      let nightRate = room.pricePerNight;
+
+      if (dateOverride) {
+        nightRate = dateOverride.rate;
+      } else if (room.customRates?.paxTierRates) {
+        const tier = isWeekend
+          ? room.customRates.paxTierRates.friSun?.[guests]
+          : room.customRates.paxTierRates.monThu?.[guests];
+        if (tier) nightRate = tier;
+      }
+
+      nightBreakdown.push({
+        date: dateStr,
+        dayName,
+        isWeekend,
+        rate: nightRate,
+      });
+      sum += nightRate;
     }
-  }, [currentCustomer]);
 
-  // Dynamic pricing calculation using Custom Rates Engine (Days, Pax, Specific Dates)
-  const pricing = calculateRoomPricing(
-    room,
-    checkInDate,
-    checkOutDate,
-    numberOfGuests
-  );
+    // Apply duration discounts
+    let discount = 0;
+    const durationDiscounts = room.customRates?.durationDiscounts;
+    if (durationDiscounts) {
+      if (calculatedNights >= 30 && durationDiscounts.monthlyDiscount) {
+        discount = (sum * durationDiscounts.monthlyDiscount) / 100;
+      } else if (calculatedNights >= 7 && durationDiscounts.weeklyDiscount) {
+        discount = (sum * durationDiscounts.weeklyDiscount) / 100;
+      } else if (calculatedNights >= 3 && durationDiscounts.threeNightsDiscount) {
+        discount = (sum * durationDiscounts.threeNightsDiscount) / 100;
+      }
+    }
 
-  const diffDays = pricing.nights;
-  const totalAmount = pricing.grandTotal;
+    return {
+      nights: calculatedNights,
+      breakdown: nightBreakdown,
+      subtotal: sum,
+      discountAmount: discount,
+      totalAmount: Math.max(0, sum - discount),
+    };
+  }, [checkIn, checkOut, guests, room]);
 
-  const handleNext = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError('');
+    if (!guestName || !guestPhone) {
+      alert('Please fill in your name and phone number.');
+      return;
+    }
 
-    if (step === 1) {
-      if (!checkInDate || !checkOutDate) {
-        onShowToast('Please select valid check-in and check-out dates.', 'error');
-        return;
-      }
-      setStep(2);
-    } else if (step === 2) {
-      // If customer is NOT yet authenticated/registered, require account creation or login first!
-      if (!currentCustomer) {
-        if (authMode === 'register') {
-          if (!guestName.trim()) {
-            setAuthError('Please enter your full name.');
-            return;
-          }
-          if (!guestPhone.trim()) {
-            setAuthError('Please enter your contact phone number.');
-            return;
-          }
-          if (guestEmail.trim() && !guestEmail.includes('@')) {
-            setAuthError('Please enter a valid email address or leave it empty.');
-            return;
-          }
-          if (!password || password.length < 6) {
-            setAuthError('Password must be at least 6 characters long.');
-            return;
-          }
-          if (password !== confirmPassword) {
-            setAuthError('Passwords do not match. Please verify.');
-            return;
-          }
-
-          const res = registerCustomer(guestName, guestEmail, password, guestPhone);
-          if (!res.success || !res.user) {
-            setAuthError(res.error || 'Failed to register account.');
-            return;
-          }
-
-          onCustomerChange?.(res.user);
-          setGuestName(res.user.name);
-          setGuestEmail(res.user.email);
-          setGuestPhone(res.user.phone);
-          onShowToast(`Account registered! Welcome, ${res.user.name}.`, 'success');
-          setStep(3);
-        } else {
-          // Login Mode
-          if (!guestEmail.trim()) {
-            setAuthError('Please enter your contact number or registered email.');
-            return;
-          }
-          if (!password) {
-            setAuthError('Please enter your account password.');
-            return;
-          }
-
-          const res = loginCustomer(guestEmail, password);
-          if (!res.success || !res.user) {
-            setAuthError(res.error || 'Invalid contact number, email, or password.');
-            return;
-          }
-
-          onCustomerChange?.(res.user);
-          setGuestName(res.user.name);
-          setGuestEmail(res.user.email);
-          setGuestPhone(res.user.phone);
-          onShowToast(`Signed in as ${res.user.name}.`, 'success');
-          setStep(3);
-        }
-      } else {
-        // Customer is already logged in
-        if (!guestPhone.trim()) {
-          onShowToast('Please provide a contact phone number for check-in coordination.', 'error');
-          return;
-        }
-        setStep(3);
-      }
-    } else {
-      // Step 3: Final confirmation
-      if (!currentCustomer) {
-        onShowToast('Account registration is required before confirming a booking.', 'error');
-        setStep(2);
-        return;
-      }
-
-      onConfirmBooking({
+    setIsSubmitting(true);
+    try {
+      const code = `DV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const reservation: Reservation = {
+        id: `res-${Date.now()}`,
+        confirmationCode: code,
         roomId: room.id,
         roomName: room.name,
         roomNumber: room.roomNumber,
-        guestName: guestName || currentCustomer.name,
-        guestEmail: guestEmail || currentCustomer.email,
-        guestPhone: guestPhone || currentCustomer.phone,
-        checkInDate,
-        checkOutDate,
-        numberOfGuests,
+        guestName,
+        guestEmail: guestEmail || 'guest@example.com',
+        guestPhone,
+        checkInDate: checkIn,
+        checkOutDate: checkOut,
+        numberOfGuests: guests,
         totalAmount,
+        status: 'upcoming',
         specialRequests,
+        createdAt: new Date().toISOString(),
         paymentMethod,
-      });
-      onClose();
+      };
+
+      await onConfirmBooking(reservation);
+      setConfirmedReservation(reservation);
+    } catch (err: any) {
+      alert(err.message || 'Failed to complete reservation');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleQuickDemoLogin = (email: string) => {
-    setAuthError('');
-    setGuestEmail(email);
-    setPassword('password123');
-    const res = loginCustomer(email, 'password123');
-    if (res.success && res.user) {
-      onCustomerChange?.(res.user);
-      setGuestName(res.user.name);
-      setGuestEmail(res.user.email);
-      setGuestPhone(res.user.phone);
-      onShowToast(`Signed in as ${res.user.name}.`, 'success');
-      setStep(3);
-    } else {
-      setAuthError(res.error || 'Failed to sign in with demo account.');
+  const copyCode = () => {
+    if (confirmedReservation) {
+      navigator.clipboard.writeText(confirmedReservation.confirmationCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-        {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">
-                Diversion Vigan • Transient and Private Villa
-              </span>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Book {room.name}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white dark:bg-[#1a130e] text-[#2a1c14] dark:text-[#f8f4ec] rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-[#ebdcd0] dark:border-[#403024] relative my-8 animate-in fade-in zoom-in-95 duration-200">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          aria-label="Close modal"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 dark:bg-[#2b2019] hover:bg-gray-200 dark:hover:bg-[#382b22] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {confirmedReservation ? (
+          /* Confirmation Success View */
+          <div className="text-center py-4">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-300 dark:border-emerald-800">
+              <CheckCircle className="w-10 h-10" />
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">
+              Reservation Confirmed
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#2a1c14] dark:text-[#fcf9ee] mt-1 mb-2">
+              Mabuhay, {confirmedReservation.guestName}!
+            </h2>
+            <p className="text-xs sm:text-sm text-[#735745] dark:text-[#c5b2a3] max-w-md mx-auto mb-6">
+              Your reservation at <strong>Diversion Vigan</strong> has been successfully placed. We
+              look forward to hosting you!
+            </p>
+
+            {/* Confirmation Code Card */}
+            <div className="bg-[#fbf6f0] dark:bg-[#241a14] border-2 border-dashed border-amber-600/40 p-4 rounded-2xl max-w-md mx-auto mb-6">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#8c6e59] dark:text-[#a89383]">
+                Your Confirmation Code
+              </span>
+              <div className="flex items-center justify-center gap-3 mt-1">
+                <span className="text-2xl font-mono font-bold text-amber-700 dark:text-amber-400 tracking-wider">
+                  {confirmedReservation.confirmationCode}
+                </span>
+                <button
+                  onClick={copyCode}
+                  className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 hover:bg-amber-200 transition-colors"
+                  title="Copy confirmation code"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+              {copied && <span className="text-[10px] text-emerald-600 font-semibold">Copied to clipboard!</span>}
+            </div>
+
+            {/* Summary Details */}
+            <div className="bg-gray-50 dark:bg-[#201712] rounded-xl p-4 text-left text-xs space-y-2 mb-6 border border-[#ebdcd0] dark:border-[#382b20]">
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                <span className="font-semibold">{confirmedReservation.roomName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                <span className="font-semibold">
+                  {confirmedReservation.checkInDate} to {confirmedReservation.checkOutDate} ({nights} {nights === 1 ? 'night' : 'nights'})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Guests:</span>
+                <span className="font-semibold">{confirmedReservation.numberOfGuests} Guests</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Payment:</span>
+                <span className="font-semibold">{confirmedReservation.paymentMethod}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700 text-sm font-bold text-amber-700 dark:text-amber-400">
+                <span>Total Amount:</span>
+                <span>₱{confirmedReservation.totalAmount.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-semibold flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-[#2b211a] transition-all"
+              >
+                <Printer className="w-4 h-4" /> Print / Save Voucher
+              </button>
+              <button
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md transition-all"
+              >
+                Done
+              </button>
+            </div>
           </div>
-
-          {/* Stepper Indicator */}
-          <div className="flex items-center justify-between px-8 py-3.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  step >= 1 ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                1
+        ) : (
+          /* Booking Form */
+          <div>
+            <div className="mb-6">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">
+                Unit #{room.roomNumber} • {room.category}
               </span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Dates & Guests
-              </span>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#2a1c14] dark:text-[#f8f4ec]">
+                Reserve {room.name}
+              </h2>
             </div>
-            <div className="w-8 h-0.5 bg-slate-200 dark:bg-slate-700"></div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  step >= 2 ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                2
-              </span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {currentCustomer ? 'Guest Info' : 'Account Required'}
-              </span>
-            </div>
-            <div className="w-8 h-0.5 bg-slate-200 dark:bg-slate-700"></div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  step >= 3 ? 'bg-amber-600 text-white' : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                3
-              </span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Review & Book
-              </span>
-            </div>
-          </div>
 
-          <form onSubmit={handleNext} className="p-6 space-y-5">
-            {/* STEP 1: Dates & Guests */}
-            {step === 1 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                      Check-In Date
-                    </label>
-                    <input
-                      type="date"
-                      value={checkInDate}
-                      onChange={(e) => setCheckInDate(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                      Check-Out Date
-                    </label>
-                    <input
-                      type="date"
-                      value={checkOutDate}
-                      onChange={(e) => setCheckOutDate(e.target.value)}
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      required
-                    />
-                  </div>
-                </div>
-
+            <form onSubmit={handleBookingSubmit} className="space-y-5">
+              {/* Dates & Pax Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                    Number of Guests (Max {room.capacity})
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Check-in Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={checkIn}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Check-out Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={checkOut}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Guests (Pax)
                   </label>
                   <select
-                    value={numberOfGuests}
-                    onChange={(e) => setNumberOfGuests(Number(e.target.value))}
-                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    value={guests}
+                    onChange={(e) => setGuests(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   >
-                    {Array.from({ length: room.capacity }, (_, i) => i + 1).map((num) => (
-                      <option key={num} value={num}>
-                        {num} {num === 1 ? 'Guest' : 'Guests'}
+                    {Array.from({ length: room.capacity }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n} {n === 1 ? 'Guest' : 'Guests'} (Max {room.capacity})
                       </option>
                     ))}
                   </select>
                 </div>
-
-                <div className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex justify-between items-center">
-                  <div>
-                    <div className="text-xs font-semibold text-rose-900 dark:text-rose-300">
-                      Stay Duration
-                    </div>
-                    <div className="text-sm font-bold text-rose-700 dark:text-rose-400">
-                      {diffDays} Night{diffDays !== 1 ? 's' : ''} • {numberOfGuests} Guest{numberOfGuests !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs font-semibold text-rose-900 dark:text-rose-300">
-                      Estimated Total
-                    </div>
-                    <div className="text-base font-extrabold text-rose-700 dark:text-rose-400">
-                      {formatPHP(pricing.grandTotal)}
-                    </div>
-                  </div>
-                </div>
-
-                {!currentCustomer && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-300">
-                    <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>
-                      <strong>Account required:</strong> You will be prompted to register or sign in on the next step to secure your reservation.
-                    </span>
-                  </div>
-                )}
               </div>
-            )}
 
-            {/* STEP 2: Account Registration / Guest Info */}
-            {step === 2 && (
-              <div className="space-y-4">
-                {currentCustomer ? (
-                  /* User is already registered and logged in */
-                  <div className="space-y-4">
-                    <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
-                          {currentCustomer.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .substring(0, 2)
-                            .toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                            <span>{currentCustomer.name}</span>
-                            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded-full font-bold">
-                              Registered
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                            {currentCustomer.email} • Stay will link to My Booking
-                          </div>
-                        </div>
-                      </div>
-                      <UserCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                        Contact Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        value={guestPhone}
-                        onChange={(e) => setGuestPhone(e.target.value)}
-                        placeholder="+63 900 000 0000"
-                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                        Special Requests (Optional)
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder="Late check-in, extra towels, quiet room preference..."
-                        value={specialRequests}
-                        onChange={(e) => setSpecialRequests(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
-                      ></textarea>
-                    </div>
-                  </div>
-                ) : (
-                  /* User is NOT logged in: STRICTLY REQUIRE ACCOUNT REGISTRATION OR LOGIN */
-                  <div className="space-y-4">
-                    {/* Notice Banner */}
-                    <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-2xl flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                          Account Registration Required to Book
-                        </h4>
-                        <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5 leading-relaxed">
-                          Guests must register an account before booking. Your confirmed voucher, QR code, and check-in slip will be saved in <strong>My Booking</strong>.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Mode Selector Tabs */}
-                    <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAuthMode('register');
-                          setAuthError('');
-                        }}
-                        className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                          authMode === 'register'
-                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                            : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                        }`}
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>Register Account</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAuthMode('login');
-                          setAuthError('');
-                        }}
-                        className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                          authMode === 'login'
-                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                            : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                        }`}
-                      >
-                        <LogIn className="w-3.5 h-3.5" />
-                        <span>Sign In</span>
-                      </button>
-                    </div>
-
-                    {/* Auth Error Display */}
-                    {authError && (
-                      <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{authError}</span>
-                      </div>
-                    )}
-
-                    {authMode === 'register' ? (
-                      /* Registration Form Fields */
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Full Name <span className="text-rose-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type="text"
-                              required
-                              value={guestName}
-                              onChange={(e) => setGuestName(e.target.value)}
-                              placeholder="Juan Dela Cruz"
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Contact / Phone Number <span className="text-rose-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type="tel"
-                              required
-                              value={guestPhone}
-                              onChange={(e) => setGuestPhone(e.target.value)}
-                              placeholder="+63 917 123 4567"
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Password (min 6 chars) <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type={showPassword ? 'text' : 'password'}
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                              >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                              Confirm Password <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type={showPassword ? 'text' : 'password'}
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase">
-                              Email Address
-                            </label>
-                            <span className="text-[10px] text-slate-400 font-semibold">(Optional)</span>
-                          </div>
-                          <div className="relative">
-                            <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type="email"
-                              value={guestEmail}
-                              onChange={(e) => setGuestEmail(e.target.value)}
-                              placeholder="juan@example.com (optional)"
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Sign In Mode Fields */
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Contact Number or Email
-                          </label>
-                          <div className="relative">
-                            <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type="text"
-                              required
-                              value={guestEmail}
-                              onChange={(e) => setGuestEmail(e.target.value)}
-                              placeholder="Enter contact number or email"
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                            Password
-                          </label>
-                          <div className="relative">
-                            <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type={showPassword ? 'text' : 'password'}
-                              required
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="••••••••"
-                              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                            >
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* STEP 3: Review & Payment */}
-            {step === 3 && (
-              <div className="space-y-4">
-                {/* Account Confirmation Pill */}
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="text-emerald-900 dark:text-emerald-200">
-                      Booking for: <strong>{guestName || currentCustomer?.name}</strong> ({guestEmail || currentCustomer?.email})
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
-                    Linked to My Booking
-                  </span>
-                </div>
-
-                {/* Price Breakdown */}
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Price Breakdown
-                    </h4>
-                    <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                      Custom Dynamic Rates
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
-                    <span>
-                      Nightly Subtotal ({diffDays} night{diffDays > 1 ? 's' : ''})
-                    </span>
-                    <span>{formatPHP(pricing.nightlySubtotal)}</span>
-                  </div>
-                  {pricing.extraPaxTotal > 0 && (
-                    <div className="flex justify-between text-xs text-rose-600 dark:text-rose-400 font-semibold">
-                      <span>Extra Guests Surcharge ({numberOfGuests} guests)</span>
-                      <span>+{formatPHP(pricing.extraPaxTotal)}</span>
-                    </div>
-                  )}
-                  {pricing.durationDiscountAmount > 0 && (
-                    <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                      <span>Length of Stay Discount</span>
-                      <span>-{formatPHP(pricing.durationDiscountAmount)}</span>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between text-sm font-extrabold text-slate-900 dark:text-white">
-                    <span>Total Amount Due</span>
-                    <span className="text-rose-600 dark:text-rose-400">{formatPHP(pricing.grandTotal)}</span>
-                  </div>
-                </div>
-
+              {/* Guest Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
-                    Payment Method
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Full Name *
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Juan Dela Cruz"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Mobile Phone *
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+63 917 123 4567"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Email Address (Optional)
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <input
+                      type="email"
+                      placeholder="juan@example.com"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                    Payment Preference
                   </label>
                   <select
                     value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as Reservation['paymentMethod'])}
-                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    onChange={(e: any) => setPaymentMethod(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   >
-                    <option value="GCash / Mobile Money">GCash (Mobile Wallet)</option>
-                    <option value="Credit Card">Credit / Debit Card (Visa, Mastercard)</option>
-                    <option value="Cash at Desk">Pay Cash at Front-Desk</option>
-                    <option value="PayPal">Maya (PayMaya) / Online Banking</option>
+                    <option value="GCash">GCash Transfer</option>
+                    <option value="Maya">Maya (PayMaya)</option>
+                    <option value="Bank Transfer">Bank Transfer (BDO / BPI)</option>
+                    <option value="Cash">Cash on Check-in (Villa Front Desk)</option>
                   </select>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>
-                    Official booking slip and QR verification will be issued in <strong>My Booking</strong> immediately upon confirmation.
-                  </span>
+              <div>
+                <label className="block text-xs font-semibold text-[#735745] dark:text-[#c5b2a3] mb-1">
+                  Special Requests or Arrival Notes
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Estimated arrival time, extra pillows, celebration setup..."
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#231a14] text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                />
+              </div>
+
+              {/* Price Calculation Box */}
+              <div className="bg-[#fbf6f0] dark:bg-[#231a14] p-4 rounded-2xl border border-[#ebdcd0] dark:border-[#382b20]">
+                <div className="flex items-center justify-between text-xs font-bold text-[#4a3426] dark:text-[#d8c7b8] mb-2">
+                  <span>Pricing Summary ({nights} {nights === 1 ? 'night' : 'nights'})</span>
+                  <span>{guests} Pax</span>
+                </div>
+
+                <div className="space-y-1 text-xs text-[#735745] dark:text-[#a89383]">
+                  {breakdown.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-[11px]">
+                      <span>
+                        {item.date} ({item.dayName}) {item.isWeekend ? '• Weekend' : '• Weekday'}
+                      </span>
+                      <span>₱{item.rate.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  {breakdown.length > 3 && (
+                    <div className="text-[10px] text-gray-500 italic">
+                      + {breakdown.length - 3} more nights...
+                    </div>
+                  )}
+
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-semibold pt-1">
+                      <span>Duration Discount Applied</span>
+                      <span>-₱{discountAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-sm font-serif font-bold text-[#2a1c14] dark:text-[#f8f4ec] pt-2 border-t border-[#ebdcd0] dark:border-[#3d2f25]">
+                    <span>Total Estimated Amount</span>
+                    <span className="text-amber-700 dark:text-amber-400">
+                      ₱{totalAmount.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-              {step > 1 ? (
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setAuthError('');
-                    setStep((s) => (s - 1) as 1 | 2);
-                  }}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  onClick={onClose}
+                  className="px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-[#2b211a]"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back</span>
+                  Cancel
                 </button>
-              ) : (
-                <div></div>
-              )}
-
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <span>
-                  {step === 1
-                    ? 'Continue'
-                    : step === 2
-                    ? currentCustomer
-                      ? 'Proceed to Review'
-                      : authMode === 'register'
-                      ? 'Register Account & Continue'
-                      : 'Sign In & Continue'
-                    : 'Confirm Reservation'}
-                </span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </form>
-        </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <span>Confirming...</span>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Confirm & Reserve Room</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
-    );
+    </div>
+  );
 };

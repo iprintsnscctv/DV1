@@ -1,37 +1,57 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-export const createClient = (request: NextRequest) => {
-  // Create an unmodified response
+export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request,
   });
 
-  const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
-    {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    "https://xdggjrorpafpwsnixlww.supabase.co";
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    "sb_publishable_nApChRkKMTd2y2DMV-0fng_n0PrjENb";
+
+  if (!supabaseUrl || !supabaseKey) {
+    return supabaseResponse;
+  }
+
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({
             request,
-          })
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
-          )
+          );
         },
       },
-    },
-  );
+    });
 
-  return supabaseResponse
-};
+    // IMPORTANT: Avoid writing any logic between createServerClient and
+    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+    // issues with users being randomly logged out.
+    await supabase.auth.getUser();
+  } catch (err) {
+    // If Supabase authentication or network fails, return standard response without crashing
+    console.warn("[Middleware] Supabase session check error:", err);
+  }
+
+  return supabaseResponse;
+}
+
+// Keep backwards-compatible export
+export const createClient = updateSession;
+

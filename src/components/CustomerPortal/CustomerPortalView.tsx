@@ -6,6 +6,7 @@ import {
   logoutCustomer,
 } from '../../utils/customerAuth';
 import { formatPHP } from '../../utils/formatCurrency';
+import { normalizeReceiptNumber } from '../../utils/receiptNumber';
 import { BookingReceiptModal } from './BookingReceiptModal';
 import { WriteReviewModal } from './WriteReviewModal';
 import {
@@ -199,7 +200,7 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({
               </div>
               <h2 className="text-xl font-bold">Guest Portal • My Booking</h2>
               <p className="text-xs text-amber-100/90 mt-1 max-w-xs mx-auto">
-                Sign in or register to manage your room reservations, review check-in vouchers, and write reviews with photos &amp; videos.
+                Sign in or register to manage your room reservations, review check-in receipts, and write reviews with photos &amp; videos.
               </p>
             </div>
           </div>
@@ -596,7 +597,7 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({
                           <div className="space-y-1 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60">
-                                {res.confirmationCode}
+                                {normalizeReceiptNumber(res.confirmationCode)}
                               </span>
                               <span
                                 className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded-full ${
@@ -664,14 +665,15 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({
                               <span>Write Review</span>
                             </button>
 
-                            {/* View Voucher / Receipt Button */}
+                            {/* View Receipt Button */}
                             <button
                               type="button"
                               onClick={() => setReceiptReservation(res)}
                               className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                              title="View official receipt"
                             >
                               <FileText className="w-3.5 h-3.5 text-rose-500" />
-                              <span>View Voucher</span>
+                              <span>View Receipt</span>
                             </button>
 
                             {/* Cancel Button if upcoming */}
@@ -699,7 +701,7 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
                     {statusFilter === 'all'
-                      ? `There are no reservations registered under your account yet. Make a reservation to view your itinerary and vouchers here!`
+                      ? `There are no reservations registered under your account yet. Make a reservation to view your itinerary and receipts here!`
                       : 'Try selecting "All Bookings" to see all reservations on your account.'}
                   </p>
                   <button
@@ -872,12 +874,13 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({
         </div>
       )}
 
-      {/* Booking Receipt Voucher Modal */}
+      {/* Booking Receipt Modal */}
       {receiptReservation && (
         <BookingReceiptModal
           reservation={receiptReservation}
           room={rooms.find((r) => r.id === receiptReservation.roomId)}
           onClose={() => setReceiptReservation(null)}
+          onShowToast={onShowToast}
         />
       )}
 

@@ -361,7 +361,7 @@ export const INITIAL_ROOMS: Room[] = [
     sizeSqM: 24,
     images: [
       'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1540518614846-7ede433c4ef0?auto=format&fit=crop&w=1200&q=80'
+      'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80'
     ],
     description: 'Comfortable Standard room accommodating up to 3 pax.',
     amenities: ['High-Speed Wi-Fi', 'Panoramic Windows', 'Air Conditioning', 'Smart TV'],
@@ -541,7 +541,7 @@ export const INITIAL_ROOMS: Room[] = [
 export const INITIAL_RESERVATIONS: Reservation[] = [
   {
     id: 'res-101',
-    confirmationCode: 'DIV-8921-XQ',
+    confirmationCode: 'DV-0126',
     roomId: 'room-1',
     roomName: 'Room 1 - Standard Family Suite',
     roomNumber: '1',
@@ -559,7 +559,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
   },
   {
     id: 'res-102',
-    confirmationCode: 'DIV-5412-MK',
+    confirmationCode: 'DV-0226',
     roomId: 'room-3',
     roomName: 'Room 3 - Heritage Balcony Suite',
     roomNumber: '3',
@@ -577,7 +577,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
   },
   {
     id: 'res-103',
-    confirmationCode: 'DIV-3321-PR',
+    confirmationCode: 'DV-0326',
     roomId: 'room-0',
     roomName: 'Room 0 - Ground Floor Studio',
     roomNumber: '0',
