@@ -24,6 +24,7 @@ export function createApp() {
   // Dedicated API subrouters
   app.use('/api/rooms', roomsRouter);
   app.use('/api/reservations', reservationsRouter);
+  app.use('/api/bookings', reservationsRouter);
   app.use('/api/settings', settingsRouter);
 
   return app;

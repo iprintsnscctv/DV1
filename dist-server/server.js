@@ -650,6 +650,7 @@ function createApp() {
   });
   app2.use("/api/rooms", rooms_default);
   app2.use("/api/reservations", reservations_default);
+  app2.use("/api/bookings", reservations_default);
   app2.use("/api/settings", settings_default);
   return app2;
 }
