@@ -368,6 +368,10 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        <div className="max-w-7xl mx-auto mt-8 pt-4 border-t border-amber-900/10 dark:border-amber-900/20 text-center text-xs text-[#806c5d] dark:text-[#9e8d7f]">
+          <p>Designed &amp; Developed by James Mait</p>
+        </div>
       </footer>
 
       {/* Room Detail Modal */}
