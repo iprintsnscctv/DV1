@@ -6,7 +6,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const bundledServer = path.resolve(process.cwd(), 'dist-server', 'server.js');
 
 if (isProduction && fs.existsSync(bundledServer)) {
-  await import(bundledServer);
+  await import(path.resolve(process.cwd(), 'dist-server', 'server.js'));
 } else {
   const express = (await import('express')).default;
   const { createApp } = await import('./server/app.ts');
